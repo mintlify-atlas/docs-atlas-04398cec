@@ -1,0 +1,251 @@
+---
+title: GoogleReCaptcha
+description: Component that automatically executes reCAPTCHA and provides tokens via callback
+---
+
+## Overview
+
+`GoogleReCaptcha` is a component that automatically executes reCAPTCHA when mounted or when its dependencies change. It's useful when you want to automatically get a reCAPTCHA token without manually calling `executeRecaptcha`.
+
+**Source:** `src/google-recaptcha.tsx:11`
+
+## Import
+
+```typescript
+import { GoogleReCaptcha } from 'react-google-recaptcha-v3';
+```
+
+## Props
+
+<ParamField path="onVerify" type="(token: string) => void | Promise<void>" required>
+  Callback function that receives the reCAPTCHA token. This function is called automatically whenever reCAPTCHA executes.
+  
+  - **token**: The reCAPTCHA token string returned by Google
+  - Can be synchronous or asynchronous (return a Promise)
+</ParamField>
+
+<ParamField path="action" type="string">
+  The action name to pass to reCAPTCHA. This helps you distinguish different user actions in the reCAPTCHA admin console analytics.
+  
+  Examples: `"login"`, `"submit_form"`, `"checkout"`
+</ParamField>
+
+<ParamField path="refreshReCaptcha" type="boolean | string | number | null">
+  Trigger to refresh and re-execute reCAPTCHA. When this value changes, reCAPTCHA will execute again and call `onVerify` with a new token.
+  
+  - Can be any type that changes (boolean, string, number)
+  - Set to `null` to prevent execution
+  - Useful for refreshing tokens or re-validating after form changes
+</ParamField>
+
+## Return Value
+
+The component returns:
+- A `<div>` element with the container ID if using explicit rendering mode
+- `null` if not using explicit rendering
+
+## Usage Examples
+
+### Basic Usage
+
+```tsx
+import { GoogleReCaptchaProvider, GoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+function App() {
+  const handleVerify = (token: string) => {
+    console.log('reCAPTCHA token:', token);
+    // Send token to your backend for verification
+  };
+
+  return (
+    <GoogleReCaptchaProvider reCaptchaKey="YOUR_SITE_KEY">
+      <GoogleReCaptcha onVerify={handleVerify} />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+### With Action Name
+
+```tsx
+import { GoogleReCaptchaProvider, GoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+function LoginForm() {
+  const handleVerify = async (token: string) => {
+    // Send token to backend with login request
+    await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, action: 'login' })
+    });
+  };
+
+  return (
+    <GoogleReCaptchaProvider reCaptchaKey="YOUR_SITE_KEY">
+      <form>
+        {/* Form fields */}
+        <GoogleReCaptcha
+          onVerify={handleVerify}
+          action="login"
+        />
+      </form>
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+### Refreshing Token on Form Changes
+
+```tsx
+import { useState } from 'react';
+import { GoogleReCaptchaProvider, GoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+function ContactForm() {
+  const [formData, setFormData] = useState({ name: '', email: '' });
+  const [token, setToken] = useState('');
+
+  const handleVerify = (newToken: string) => {
+    setToken(newToken);
+  };
+
+  return (
+    <GoogleReCaptchaProvider reCaptchaKey="YOUR_SITE_KEY">
+      <form>
+        <input
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+        />
+        <input
+          value={formData.email}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+        />
+        
+        {/* Token refreshes when formData changes */}
+        <GoogleReCaptcha
+          onVerify={handleVerify}
+          action="contact_form"
+          refreshReCaptcha={JSON.stringify(formData)}
+        />
+      </form>
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+### Conditional Execution
+
+```tsx
+import { useState } from 'react';
+import { GoogleReCaptchaProvider, GoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+function ConditionalForm() {
+  const [shouldVerify, setShouldVerify] = useState(false);
+
+  const handleVerify = (token: string) => {
+    console.log('Verified:', token);
+  };
+
+  return (
+    <GoogleReCaptchaProvider reCaptchaKey="YOUR_SITE_KEY">
+      <button onClick={() => setShouldVerify(true)}>
+        Start Verification
+      </button>
+      
+      {/* Only executes when shouldVerify is true */}
+      <GoogleReCaptcha
+        onVerify={handleVerify}
+        refreshReCaptcha={shouldVerify}
+      />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+### Periodic Token Refresh
+
+```tsx
+import { useState, useEffect } from 'react';
+import { GoogleReCaptchaProvider, GoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+function PeriodicRefresh() {
+  const [refreshToken, setRefreshToken] = useState(0);
+
+  useEffect(() => {
+    // Refresh token every 2 minutes (tokens expire after ~2 minutes)
+    const interval = setInterval(() => {
+      setRefreshToken(prev => prev + 1);
+    }, 110000); // 110 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleVerify = (token: string) => {
+    // Store or use the refreshed token
+    sessionStorage.setItem('recaptcha_token', token);
+  };
+
+  return (
+    <GoogleReCaptchaProvider reCaptchaKey="YOUR_SITE_KEY">
+      <GoogleReCaptcha
+        onVerify={handleVerify}
+        refreshReCaptcha={refreshToken}
+      />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+## Behavior
+
+### When Component Mounts
+1. Retrieves `executeRecaptcha` from context via `useGoogleReCaptcha`
+2. Executes reCAPTCHA with the specified action
+3. Calls `onVerify` with the resulting token
+
+### When Props Change
+The component re-executes reCAPTCHA when any of these props change:
+- `action`
+- `onVerify`
+- `refreshReCaptcha`
+
+### Warnings
+- If `executeRecaptcha` is not available (provider not initialized), execution is skipped
+- If `onVerify` is not provided, a warning is logged in development mode
+
+## TypeScript Interfaces
+
+```typescript
+interface IGoogleRecaptchaProps {
+  onVerify: (token: string) => void | Promise<void>;
+  action?: string;
+  refreshReCaptcha?: boolean | string | number | null;
+}
+```
+
+See [TypeScript Interfaces](/api/typescript-interfaces) for complete type definitions.
+
+## Comparison with useGoogleReCaptcha Hook
+
+| Feature | GoogleReCaptcha Component | useGoogleReCaptcha Hook |
+|---------|---------------------------|-------------------------|
+| Execution | Automatic on mount/prop changes | Manual control |
+| Use case | Fire-and-forget token generation | Complex flows, manual triggers |
+| Flexibility | Limited to component lifecycle | Full control |
+| Code style | Declarative | Imperative |
+
+**Use `GoogleReCaptcha` when:**
+- You want automatic token generation
+- Token should refresh based on state changes
+- You prefer declarative React patterns
+
+**Use `useGoogleReCaptcha` when:**
+- You need manual control over execution timing
+- You want to execute reCAPTCHA on user actions (button clicks)
+- You need to handle complex validation flows
+
+## Related APIs
+
+- [GoogleReCaptchaProvider](/api/google-recaptcha-provider) - Required provider component
+- [useGoogleReCaptcha](/api/use-google-recaptcha-hook) - Hook for manual control
+- [withGoogleReCaptcha](/api/with-google-recaptcha-hoc) - HOC for class components
+- [TypeScript Interfaces](/api/typescript-interfaces) - Type definitions

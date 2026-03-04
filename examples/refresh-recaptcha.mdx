@@ -1,0 +1,622 @@
+---
+title: 'Refreshing reCAPTCHA'
+description: 'Learn how to refresh reCAPTCHA tokens for repeated submissions and improved security'
+icon: 'rotate'
+---
+
+## Overview
+
+reCAPTCHA tokens are valid for approximately 2 minutes. For forms that may be open for longer periods or for repeated submissions, you'll need to refresh the token. This guide shows you different approaches to handle token refresh scenarios.
+
+## Why Refresh Tokens?
+
+You should refresh reCAPTCHA tokens in these scenarios:
+
+- **Long forms**: When users might take more than 2 minutes to complete a form
+- **Repeated submissions**: When users can submit the same form multiple times
+- **Failed submissions**: When a submission fails and the user needs to retry
+- **Session persistence**: When keeping a form open for extended periods
+
+<Warning>
+  reCAPTCHA tokens expire after approximately 2 minutes. Using an expired token will result in verification failure on your backend.
+</Warning>
+
+## Using the GoogleReCaptcha Component
+
+The `GoogleReCaptcha` component provides a built-in way to refresh tokens using the `refreshReCaptcha` prop:
+
+```jsx FormWithAutoRefresh.jsx
+import React, { useState, useCallback } from 'react';
+import {
+  GoogleReCaptchaProvider,
+  GoogleReCaptcha
+} from 'react-google-recaptcha-v3';
+
+export function FormWithAutoRefresh() {
+  const [token, setToken] = useState('');
+  const [refreshReCaptcha, setRefreshReCaptcha] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Use useCallback to prevent infinite re-renders
+  const onVerify = useCallback((token) => {
+    setToken(token);
+    console.log('New token received:', token);
+  }, []);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      // Submit your form with the current token
+      const response = await fetch('/api/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message);
+      }
+
+      alert('Form submitted successfully!');
+      
+      // Refresh reCAPTCHA after successful submission
+      setRefreshReCaptcha(r => !r);
+    } catch (error) {
+      alert('Submission failed: ' + error.message);
+      
+      // Refresh reCAPTCHA after failed submission
+      setRefreshReCaptcha(r => !r);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <GoogleReCaptchaProvider reCaptchaKey="YOUR_RECAPTCHA_SITE_KEY">
+      <form onSubmit={handleSubmit}>
+        {/* Hidden component that manages reCAPTCHA */}
+        <GoogleReCaptcha
+          onVerify={onVerify}
+          refreshReCaptcha={refreshReCaptcha}
+        />
+        
+        <div className="form-group">
+          <label htmlFor="message">Your Message</label>
+          <textarea id="message" name="message" rows="5" required />
+        </div>
+
+        <button type="submit" disabled={isSubmitting || !token}>
+          {isSubmitting ? 'Submitting...' : 'Submit'}
+        </button>
+
+        {token && (
+          <p className="token-info">
+            Token ready: {token.substring(0, 20)}...
+          </p>
+        )}
+      </form>
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+<Note>
+  The `refreshReCaptcha` prop accepts any value. When this value changes, the component will request a new token. Common patterns include toggling a boolean or using a timestamp.
+</Note>
+
+## Manual Token Refresh with useGoogleReCaptcha
+
+For more control, you can manually request new tokens using the `useGoogleReCaptcha` hook:
+
+```jsx ManualRefreshForm.jsx
+import React, { useState, useCallback, useEffect } from 'react';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+export function ManualRefreshForm() {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+  const [token, setToken] = useState('');
+  const [tokenAge, setTokenAge] = useState(0);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    message: '',
+  });
+
+  // Function to get a fresh token
+  const refreshToken = useCallback(async () => {
+    if (!executeRecaptcha) {
+      console.log('Execute recaptcha not available yet');
+      return;
+    }
+
+    try {
+      const newToken = await executeRecaptcha('submit_form');
+      setToken(newToken);
+      setTokenAge(0);
+      console.log('Token refreshed');
+    } catch (error) {
+      console.error('Failed to refresh token:', error);
+    }
+  }, [executeRecaptcha]);
+
+  // Get initial token when component mounts
+  useEffect(() => {
+    refreshToken();
+  }, [refreshToken]);
+
+  // Track token age and auto-refresh after 90 seconds
+  useEffect(() => {
+    if (!token) return;
+
+    const interval = setInterval(() => {
+      setTokenAge(age => {
+        const newAge = age + 1;
+        
+        // Auto-refresh after 90 seconds (before 2-minute expiration)
+        if (newAge >= 90) {
+          refreshToken();
+          return 0;
+        }
+        
+        return newAge;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [token, refreshToken]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    // Get a fresh token right before submission
+    await refreshToken();
+
+    try {
+      const response = await fetch('/api/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          recaptchaToken: token,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Submission failed');
+      }
+
+      alert('Form submitted successfully!');
+      setFormData({ name: '', email: '', message: '' });
+      
+      // Get a new token for potential re-submission
+      await refreshToken();
+    } catch (error) {
+      alert('Error: ' + error.message);
+      // Refresh token after error
+      await refreshToken();
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div className="token-status">
+        Token age: {tokenAge}s
+        {tokenAge > 60 && <span className="warning"> (will refresh soon)</span>}
+        <button type="button" onClick={refreshToken}>
+          Refresh Now
+        </button>
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="name">Name</label>
+        <input
+          id="name"
+          name="name"
+          type="text"
+          value={formData.name}
+          onChange={handleChange}
+          required
+        />
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="email">Email</label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          value={formData.email}
+          onChange={handleChange}
+          required
+        />
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="message">Message</label>
+        <textarea
+          id="message"
+          name="message"
+          value={formData.message}
+          onChange={handleChange}
+          required
+          rows="5"
+        />
+      </div>
+
+      <button type="submit" disabled={!token}>
+        Submit
+      </button>
+    </form>
+  );
+}
+```
+
+<Tip>
+  Auto-refresh tokens after 90 seconds to ensure you always have a valid token before the 2-minute expiration.
+</Tip>
+
+## Refresh on Submission Failure
+
+Always refresh the token after a failed submission:
+
+```jsx FailureHandling.jsx
+import React, { useState, useCallback } from 'react';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+export function FailureHandling() {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+  const [email, setEmail] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [retryCount, setRetryCount] = useState(0);
+
+  const handleSubmit = useCallback(async (event) => {
+    event.preventDefault();
+    setIsSubmitting(true);
+    setError('');
+
+    try {
+      if (!executeRecaptcha) {
+        throw new Error('reCAPTCHA not ready');
+      }
+
+      // Always get a fresh token for each submission attempt
+      const token = await executeRecaptcha('newsletter_signup');
+
+      const response = await fetch('/api/newsletter/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, recaptchaToken: token }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          throw new Error('Too many attempts. Please try again later.');
+        }
+        throw new Error(data.message || 'Subscription failed');
+      }
+
+      // Success!
+      alert('Successfully subscribed to newsletter!');
+      setEmail('');
+      setRetryCount(0);
+    } catch (err) {
+      setError(err.message);
+      setRetryCount(prev => prev + 1);
+      
+      // Note: A new token will be obtained on next submission
+      console.log(`Submission failed. Retry count: ${retryCount + 1}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [email, executeRecaptcha, retryCount]);
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <h2>Subscribe to Newsletter</h2>
+      
+      {error && (
+        <div className="error-message">
+          {error}
+          {retryCount > 0 && (
+            <small> (Attempt {retryCount + 1})</small>
+          )}
+        </div>
+      )}
+
+      <div className="form-group">
+        <label htmlFor="email">Email Address</label>
+        <input
+          id="email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          disabled={isSubmitting}
+        />
+      </div>
+
+      <button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? 'Subscribing...' : 'Subscribe'}
+      </button>
+    </form>
+  );
+}
+```
+
+## Multi-Step Form with Token Refresh
+
+For multi-step forms, refresh the token at the final submission:
+
+```jsx MultiStepForm.jsx
+import React, { useState, useCallback } from 'react';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+export function MultiStepForm() {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+  const [step, setStep] = useState(1);
+  const [formData, setFormData] = useState({
+    // Step 1
+    name: '',
+    email: '',
+    // Step 2
+    address: '',
+    city: '',
+    // Step 3
+    cardNumber: '',
+    expiryDate: '',
+  });
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const nextStep = () => setStep(prev => prev + 1);
+  const prevStep = () => setStep(prev => prev - 1);
+
+  const handleFinalSubmit = useCallback(async () => {
+    if (!executeRecaptcha) {
+      alert('reCAPTCHA not ready. Please try again.');
+      return;
+    }
+
+    try {
+      // Get a fresh token right before final submission
+      const token = await executeRecaptcha('checkout');
+
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          recaptchaToken: token,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Checkout failed');
+      }
+
+      alert('Order completed successfully!');
+      // Redirect to success page
+      window.location.href = '/success';
+    } catch (error) {
+      alert('Error: ' + error.message);
+    }
+  }, [formData, executeRecaptcha]);
+
+  return (
+    <div className="multi-step-form">
+      <div className="progress">
+        Step {step} of 3
+      </div>
+
+      {step === 1 && (
+        <div className="step">
+          <h2>Personal Information</h2>
+          <input
+            name="name"
+            placeholder="Full Name"
+            value={formData.name}
+            onChange={handleChange}
+          />
+          <input
+            name="email"
+            type="email"
+            placeholder="Email"
+            value={formData.email}
+            onChange={handleChange}
+          />
+          <button onClick={nextStep}>Next</button>
+        </div>
+      )}
+
+      {step === 2 && (
+        <div className="step">
+          <h2>Shipping Address</h2>
+          <input
+            name="address"
+            placeholder="Street Address"
+            value={formData.address}
+            onChange={handleChange}
+          />
+          <input
+            name="city"
+            placeholder="City"
+            value={formData.city}
+            onChange={handleChange}
+          />
+          <button onClick={prevStep}>Back</button>
+          <button onClick={nextStep}>Next</button>
+        </div>
+      )}
+
+      {step === 3 && (
+        <div className="step">
+          <h2>Payment Information</h2>
+          <input
+            name="cardNumber"
+            placeholder="Card Number"
+            value={formData.cardNumber}
+            onChange={handleChange}
+          />
+          <input
+            name="expiryDate"
+            placeholder="MM/YY"
+            value={formData.expiryDate}
+            onChange={handleChange}
+          />
+          <button onClick={prevStep}>Back</button>
+          <button onClick={handleFinalSubmit}>Complete Order</button>
+          <p className="note">
+            Your information is protected by reCAPTCHA
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+<Note>
+  For multi-step forms, you typically only need to get a reCAPTCHA token at the final submission step, not for each intermediate step.
+</Note>
+
+## Polling Forms (Repeated Submissions)
+
+For forms that allow repeated submissions, manage token lifecycle carefully:
+
+```jsx PollingForm.jsx
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+export function PollingForm() {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [lastToken, setLastToken] = useState('');
+  const [lastTokenTime, setLastTokenTime] = useState(0);
+  const tokenTimeoutRef = useRef(null);
+
+  // Get a fresh token
+  const getToken = useCallback(async () => {
+    if (!executeRecaptcha) {
+      return null;
+    }
+
+    const now = Date.now();
+    
+    // Reuse token if it's less than 90 seconds old
+    if (lastToken && (now - lastTokenTime) < 90000) {
+      console.log('Reusing existing token');
+      return lastToken;
+    }
+
+    console.log('Getting fresh token');
+    const token = await executeRecaptcha('search_query');
+    setLastToken(token);
+    setLastTokenTime(now);
+
+    // Clear any existing timeout
+    if (tokenTimeoutRef.current) {
+      clearTimeout(tokenTimeoutRef.current);
+    }
+
+    // Schedule token refresh after 90 seconds
+    tokenTimeoutRef.current = setTimeout(() => {
+      setLastToken('');
+    }, 90000);
+
+    return token;
+  }, [executeRecaptcha, lastToken, lastTokenTime]);
+
+  const handleSearch = useCallback(async () => {
+    if (!query.trim()) return;
+
+    try {
+      const token = await getToken();
+      
+      if (!token) {
+        alert('reCAPTCHA not ready');
+        return;
+      }
+
+      const response = await fetch('/api/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query,
+          recaptchaToken: token,
+        }),
+      });
+
+      const data = await response.json();
+      setResults(data.results);
+    } catch (error) {
+      console.error('Search failed:', error);
+    }
+  }, [query, getToken]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (tokenTimeoutRef.current) {
+        clearTimeout(tokenTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  return (
+    <div>
+      <div className="search-box">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search..."
+          onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+        />
+        <button onClick={handleSearch}>Search</button>
+      </div>
+
+      <div className="results">
+        {results.map((result, index) => (
+          <div key={index} className="result-item">
+            {result.title}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+## Best Practices
+
+1. **Refresh before expiration**: Request a new token after 90 seconds to stay ahead of the 2-minute expiration
+2. **Refresh on failure**: Always get a new token after a failed submission
+3. **One token per submission**: Don't reuse tokens across multiple form submissions
+4. **User-initiated refresh**: Provide a manual refresh option for users who keep forms open for a long time
+5. **Handle edge cases**: Account for slow network connections and loading states
+
+<Warning>
+  Never store tokens in localStorage or cookies. Always request fresh tokens as needed.
+</Warning>
+
+## Next Steps
+
+- Review [Basic Usage Examples](/examples/basic-usage)
+- Learn about [Form Validation](/examples/form-validation)
+- Explore [Provider Configuration](/api/google-recaptcha-provider)

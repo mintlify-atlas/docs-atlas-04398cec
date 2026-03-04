@@ -1,0 +1,640 @@
+---
+title: 'Script Loading Customization'
+description: 'Learn how to customize the reCAPTCHA script loading behavior with async, defer, nonce, and more'
+---
+
+## Overview
+
+The `scriptProps` option gives you fine-grained control over how the Google reCAPTCHA script is loaded and injected into your page. This is essential for:
+
+- Meeting Content Security Policy (CSP) requirements
+- Optimizing page load performance
+- Controlling script execution timing
+- Managing where scripts are inserted in the DOM
+
+## Configuration Options
+
+The `scriptProps` prop accepts an object with the following properties:
+
+<ParamField path="scriptProps.async" type="boolean" default="false">
+  Load the reCAPTCHA script asynchronously. The script will download in parallel with page parsing.
+</ParamField>
+
+<ParamField path="scriptProps.defer" type="boolean" default="false">
+  Defer script execution until after the page has finished parsing.
+</ParamField>
+
+<ParamField path="scriptProps.appendTo" type="'head' | 'body'" default="'head'">
+  Where to inject the script tag in the DOM.
+</ParamField>
+
+<ParamField path="scriptProps.nonce" type="string" default="undefined">
+  CSP nonce value for inline script execution.
+</ParamField>
+
+<ParamField path="scriptProps.id" type="string" default="'google-recaptcha-v3'">
+  Custom ID for the script element.
+</ParamField>
+
+<ParamField path="scriptProps.onLoadCallbackName" type="string" default="'onRecaptchaLoadCallback'">
+  Custom name for the global callback function (used with explicit rendering).
+</ParamField>
+
+## Basic Usage
+
+### Async Loading (Recommended)
+
+Load the reCAPTCHA script asynchronously to avoid blocking page rendering:
+
+```jsx
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+
+function App() {
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey="YOUR_SITE_KEY"
+      scriptProps={{
+        async: true
+      }}
+    >
+      <YourApp />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+### Deferred Loading
+
+Defer script execution until the page is fully parsed:
+
+```jsx
+<GoogleReCaptchaProvider
+  reCaptchaKey="YOUR_SITE_KEY"
+  scriptProps={{
+    defer: true
+  }}
+>
+  <YourApp />
+</GoogleReCaptchaProvider>
+```
+
+### Async + Defer (Best for Performance)
+
+Combine both for optimal loading:
+
+```jsx
+<GoogleReCaptchaProvider
+  reCaptchaKey="YOUR_SITE_KEY"
+  scriptProps={{
+    async: true,
+    defer: true
+  }}
+>
+  <YourApp />
+</GoogleReCaptchaProvider>
+```
+
+<Info>
+Using both `async` and `defer` ensures the script downloads asynchronously and executes after page load, providing the best performance.
+</Info>
+
+## Content Security Policy (CSP)
+
+### Using Nonce
+
+If your site uses CSP with nonce-based script validation:
+
+```jsx
+function App() {
+  // Generate or retrieve nonce from your CSP implementation
+  const nonce = generateNonce(); // Your nonce generation logic
+
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey="YOUR_SITE_KEY"
+      scriptProps={{
+        nonce: nonce,
+        async: true
+      }}
+    >
+      <YourApp />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+The nonce will be added to the script tag:
+```html
+<script 
+  id="google-recaptcha-v3" 
+  src="https://www.google.com/recaptcha/api.js?render=YOUR_KEY"
+  nonce="YOUR_NONCE_VALUE"
+  async
+></script>
+```
+
+### CSP Headers
+
+Ensure your CSP headers allow reCAPTCHA:
+
+```http
+Content-Security-Policy: 
+  script-src 'self' 'nonce-YOUR_NONCE' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/;
+  frame-src 'self' https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/;
+```
+
+<Warning>
+reCAPTCHA requires access to both `google.com` and `gstatic.com` domains. Make sure your CSP allows both.
+</Warning>
+
+## Script Placement
+
+### Append to Head (Default)
+
+By default, the script is added to `<head>`:
+
+```jsx
+<GoogleReCaptchaProvider
+  reCaptchaKey="YOUR_SITE_KEY"
+  scriptProps={{
+    appendTo: 'head'
+  }}
+>
+  <YourApp />
+</GoogleReCaptchaProvider>
+```
+
+Results in:
+```html
+<head>
+  <!-- other head elements -->
+  <script id="google-recaptcha-v3" src="..."></script>
+</head>
+```
+
+### Append to Body
+
+For better perceived performance, append to end of `<body>`:
+
+```jsx
+<GoogleReCaptchaProvider
+  reCaptchaKey="YOUR_SITE_KEY"
+  scriptProps={{
+    appendTo: 'body',
+    async: true,
+    defer: true
+  }}
+>
+  <YourApp />
+</GoogleReCaptchaProvider>
+```
+
+Results in:
+```html
+<body>
+  <!-- page content -->
+  <script id="google-recaptcha-v3" src="..."></script>
+</body>
+```
+
+<Info>
+Appending to body is recommended when using `async` and `defer` attributes for optimal page load performance.
+</Info>
+
+## Custom Script ID
+
+Use a custom ID if you need to avoid conflicts or have specific tracking requirements:
+
+```jsx
+<GoogleReCaptchaProvider
+  reCaptchaKey="YOUR_SITE_KEY"
+  scriptProps={{
+    id: 'my-custom-recaptcha-script'
+  }}
+>
+  <YourApp />
+</GoogleReCaptchaProvider>
+```
+
+The library uses this ID for:
+- Script element identification (source: `src/utils.ts:148`)
+- Preventing duplicate script injection (source: `src/utils.ts:56-57`)
+- Cleanup on unmount (source: `src/utils.ts:110-125`)
+
+## Advanced Patterns
+
+### Next.js Integration
+
+Optimized configuration for Next.js applications:
+
+```jsx
+// pages/_app.js
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+
+function MyApp({ Component, pageProps }) {
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey={process.env.NEXT_PUBLIC_RECAPTCHA_KEY}
+      scriptProps={{
+        async: true,
+        defer: true,
+        appendTo: 'body'
+      }}
+    >
+      <Component {...pageProps} />
+    </GoogleReCaptchaProvider>
+  );
+}
+
+export default MyApp;
+```
+
+### Server-Side Rendering (SSR)
+
+When using SSR, ensure the script only loads client-side:
+
+```jsx
+import { useEffect, useState } from 'react';
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+
+function App() {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  if (!isClient) {
+    return <YourApp />;
+  }
+
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey={process.env.REACT_APP_RECAPTCHA_KEY}
+      scriptProps={{
+        async: true,
+        defer: true
+      }}
+    >
+      <YourApp />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+### Dynamic CSP Nonce
+
+Generate and use a unique nonce for each page load:
+
+```jsx
+import { useMemo } from 'react';
+import crypto from 'crypto';
+
+function App() {
+  const nonce = useMemo(() => {
+    // Generate cryptographically secure nonce
+    return crypto.randomBytes(16).toString('base64');
+  }, []);
+
+  // Set CSP header with this nonce (typically done server-side)
+  useEffect(() => {
+    const meta = document.createElement('meta');
+    meta.httpEquiv = 'Content-Security-Policy';
+    meta.content = `script-src 'self' 'nonce-${nonce}' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/`;
+    document.head.appendChild(meta);
+
+    return () => document.head.removeChild(meta);
+  }, [nonce]);
+
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey={process.env.REACT_APP_RECAPTCHA_KEY}
+      scriptProps={{
+        nonce: nonce,
+        async: true
+      }}
+    >
+      <YourApp />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+### Custom Load Callback (Explicit Rendering)
+
+When using custom containers, you can customize the callback function name:
+
+```jsx
+<GoogleReCaptchaProvider
+  reCaptchaKey="YOUR_SITE_KEY"
+  scriptProps={{
+    onLoadCallbackName: 'myCustomRecaptchaCallback'
+  }}
+  container={{
+    element: 'recaptcha-badge',
+    parameters: { badge: 'inline' }
+  }}
+>
+  <div id="recaptcha-badge" />
+</GoogleReCaptchaProvider>
+```
+
+This creates:
+```javascript
+window.myCustomRecaptchaCallback = function() {
+  // reCAPTCHA initialization
+};
+```
+
+## Performance Optimization
+
+### Lazy Loading Pattern
+
+Only load reCAPTCHA when needed (e.g., when user focuses on a form):
+
+```jsx
+import { useState } from 'react';
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+
+function App() {
+  const [loadRecaptcha, setLoadRecaptcha] = useState(false);
+
+  return (
+    <div>
+      {loadRecaptcha ? (
+        <GoogleReCaptchaProvider
+          reCaptchaKey="YOUR_SITE_KEY"
+          scriptProps={{
+            async: true,
+            defer: true
+          }}
+        >
+          <ContactForm />
+        </GoogleReCaptchaProvider>
+      ) : (
+        <button onClick={() => setLoadRecaptcha(true)}>
+          Open Contact Form
+        </button>
+      )}
+    </div>
+  );
+}
+```
+
+### Preload Hint
+
+Add a preload hint to start downloading the script earlier:
+
+```jsx
+import { useEffect } from 'react';
+
+function App() {
+  useEffect(() => {
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = 'script';
+    link.href = 'https://www.google.com/recaptcha/api.js';
+    document.head.appendChild(link);
+
+    return () => document.head.removeChild(link);
+  }, []);
+
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey="YOUR_SITE_KEY"
+      scriptProps={{
+        async: true,
+        defer: true
+      }}
+    >
+      <YourApp />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+## Complete Example
+
+Here's a production-ready configuration:
+
+```jsx
+import { useMemo } from 'react';
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+
+function App() {
+  // Stable script props to prevent re-renders
+  const scriptProps = useMemo(() => ({
+    async: true,
+    defer: true,
+    appendTo: 'body',
+    nonce: window.__CSP_NONCE__, // Injected by server
+    id: 'recaptcha-v3-script'
+  }), []);
+
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey={process.env.REACT_APP_RECAPTCHA_KEY}
+      useRecaptchaNet={false}
+      language="en"
+      scriptProps={scriptProps}
+    >
+      <div className="app">
+        <header>
+          <h1>My Secure App</h1>
+        </header>
+        <main>
+          <YourApp />
+        </main>
+      </div>
+    </GoogleReCaptchaProvider>
+  );
+}
+
+export default App;
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="CSP blocks reCAPTCHA script">
+    **Error**: "Refused to load the script because it violates the following Content Security Policy directive"
+    
+    **Solution**: Update your CSP headers:
+    ```http
+    Content-Security-Policy: 
+      script-src 'self' 'nonce-YOUR_NONCE' 
+        https://www.google.com/recaptcha/ 
+        https://www.gstatic.com/recaptcha/;
+      frame-src 'self' 
+        https://www.google.com/recaptcha/ 
+        https://recaptcha.google.com/recaptcha/;
+    ```
+  </Accordion>
+
+  <Accordion title="Script loads multiple times">
+    **Cause**: Provider is re-rendering with changing `scriptProps`.
+    
+    **Solution**: Use `useMemo` to keep scriptProps stable:
+    ```jsx
+    const scriptProps = useMemo(() => ({
+      async: true,
+      defer: true
+    }), []); // Empty deps array
+
+    <GoogleReCaptchaProvider scriptProps={scriptProps}>
+    ```
+    
+    Source reference: The library detects changes by comparing `JSON.stringify(scriptProps)` (see `src/google-recaptcha-provider.tsx:77`)
+  </Accordion>
+
+  <Accordion title="executeRecaptcha is undefined">
+    **Cause**: Script hasn't finished loading, especially with `async` or `defer`.
+    
+    **Solution**: Always check if `executeRecaptcha` is available:
+    ```jsx
+    const { executeRecaptcha } = useGoogleReCaptcha();
+
+    if (!executeRecaptcha) {
+      console.log('reCAPTCHA not ready yet');
+      return;
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Nonce not applied to script">
+    **Cause**: Nonce value is empty string or undefined.
+    
+    **Solution**: Ensure nonce has a truthy value:
+    ```jsx
+    const nonce = getNonce(); // Must return non-empty string
+
+    scriptProps={{
+      nonce: nonce || undefined // Don't pass empty string
+    }}
+    ```
+    
+    Source reference: Nonce is only applied if truthy (see `src/utils.ts:172-174`)
+  </Accordion>
+
+  <Accordion title="Script not found in expected location">
+    **Cause**: Using wrong selector or `appendTo` configuration.
+    
+    **Solution**: 
+    ```jsx
+    // Check where script is
+    console.log(document.querySelector('#google-recaptcha-v3'));
+
+    // Ensure appendTo matches your expectations
+    scriptProps={{ appendTo: 'body' }} // or 'head'
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use async + defer" icon="gauge-high">
+    For best performance, enable both `async` and `defer` to avoid blocking page rendering.
+  </Card>
+  
+  <Card title="Append to body" icon="arrow-down">
+    Combine `appendTo: 'body'` with async/defer for optimal perceived performance.
+  </Card>
+  
+  <Card title="Stable configuration" icon="lock">
+    Use `useMemo` for scriptProps to prevent unnecessary script reloads.
+  </Card>
+  
+  <Card title="Implement CSP properly" icon="shield-halved">
+    Always include both google.com and gstatic.com in your CSP directives.
+  </Card>
+</CardGroup>
+
+## Script URL Structure
+
+Understanding how the script URL is constructed (source: `src/utils.ts:166-170`):
+
+```javascript
+// Standard v3
+https://www.google.com/recaptcha/api.js?render=SITE_KEY&hl=LANGUAGE
+
+// Enterprise
+https://www.google.com/recaptcha/enterprise.js?render=SITE_KEY&hl=LANGUAGE
+
+// With recaptcha.net
+https://www.recaptcha.net/recaptcha/api.js?render=SITE_KEY&hl=LANGUAGE
+
+// Explicit rendering (custom container)
+https://www.google.com/recaptcha/api.js?render=explicit&onload=CALLBACK_NAME&hl=LANGUAGE
+```
+
+## Combining with Other Features
+
+### Script Props + Enterprise
+
+```jsx
+<GoogleReCaptchaProvider
+  reCaptchaKey="YOUR_ENTERPRISE_KEY"
+  useEnterprise={true}
+  scriptProps={{
+    async: true,
+    defer: true,
+    nonce: nonce
+  }}
+>
+  <YourApp />
+</GoogleReCaptchaProvider>
+```
+
+### Script Props + Custom Container
+
+```jsx
+<GoogleReCaptchaProvider
+  reCaptchaKey="YOUR_SITE_KEY"
+  scriptProps={{
+    async: true,
+    appendTo: 'body',
+    onLoadCallbackName: 'initRecaptcha'
+  }}
+  container={{
+    element: 'recaptcha-badge',
+    parameters: { badge: 'inline' }
+  }}
+>
+  <div id="recaptcha-badge" />
+</GoogleReCaptchaProvider>
+```
+
+### All Features Combined
+
+```jsx
+<GoogleReCaptchaProvider
+  reCaptchaKey="YOUR_ENTERPRISE_KEY"
+  useEnterprise={true}
+  useRecaptchaNet={true}
+  language="es"
+  scriptProps={{
+    async: true,
+    defer: true,
+    appendTo: 'body',
+    nonce: cspNonce,
+    id: 'my-recaptcha-script'
+  }}
+  container={{
+    element: 'recaptcha-badge',
+    parameters: {
+      badge: 'inline',
+      theme: 'dark'
+    }
+  }}
+>
+  <div id="recaptcha-badge" />
+</GoogleReCaptchaProvider>
+```
+
+## Resources
+
+- [MDN: async and defer](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script#attr-async)
+- [Content Security Policy Reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP)
+- [Google reCAPTCHA FAQ](https://developers.google.com/recaptcha/docs/faq)
+- [Web Performance Best Practices](https://web.dev/performance/)

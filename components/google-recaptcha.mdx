@@ -1,0 +1,346 @@
+---
+title: GoogleReCaptcha
+description: A declarative React component for triggering Google ReCAPTCHA v3 validation
+---
+
+The `GoogleReCaptcha` component provides a declarative way to trigger reCAPTCHA validation in your React application. It automatically executes validation when mounted or when its props change.
+
+<Note>
+  The `GoogleReCaptcha` component must be used within a `GoogleReCaptchaProvider` to function properly.
+</Note>
+
+## Installation
+
+```bash
+npm install react-google-recaptcha-v3
+```
+
+## Basic Usage
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```tsx
+    import { GoogleReCaptchaProvider, GoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+    function App() {
+      const handleVerify = (token: string) => {
+        console.log('ReCAPTCHA token:', token);
+        // Send token to your backend for verification
+      };
+
+      return (
+        <GoogleReCaptchaProvider reCaptchaKey="YOUR_RECAPTCHA_SITE_KEY">
+          <GoogleReCaptcha onVerify={handleVerify} />
+        </GoogleReCaptchaProvider>
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="JavaScript">
+    ```jsx
+    import { GoogleReCaptchaProvider, GoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+    function App() {
+      const handleVerify = (token) => {
+        console.log('ReCAPTCHA token:', token);
+        // Send token to your backend for verification
+      };
+
+      return (
+        <GoogleReCaptchaProvider reCaptchaKey="YOUR_RECAPTCHA_SITE_KEY">
+          <GoogleReCaptcha onVerify={handleVerify} />
+        </GoogleReCaptchaProvider>
+      );
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Props
+
+<ParamField path="onVerify" type="(token: string) => void | Promise<void>" required>
+  Callback function that receives the reCAPTCHA token after successful validation.
+  
+  The token should be sent to your backend server for verification using Google's siteverify API.
+  
+  <Warning>
+    Avoid using inline arrow functions for `onVerify` as it may cause infinite re-renders. Use `useCallback` or define the function outside the component.
+  </Warning>
+</ParamField>
+
+<ParamField path="action" type="string">
+  A string representing the action being performed. This helps you understand which parts of your site are being verified.
+  
+  Common actions: `"login"`, `"signup"`, `"submit_form"`, `"checkout"`, etc.
+  
+  <Tip>
+    Actions allow you to analyze reCAPTCHA scores for different parts of your application in the reCAPTCHA admin console.
+  </Tip>
+</ParamField>
+
+<ParamField path="refreshReCaptcha" type="boolean | string | number | null">
+  A value that, when changed, triggers a new reCAPTCHA validation. Can be any type that React can detect as changed.
+  
+  Common patterns:
+  - Boolean toggle: `refreshReCaptcha={!submitted}`
+  - Timestamp: `refreshReCaptcha={Date.now()}`
+  - Counter: `refreshReCaptcha={submitCount}`
+  
+  This is useful for re-validating after form submissions or other user actions.
+</ParamField>
+
+## Examples
+
+### Basic Form Validation
+
+```tsx
+import { useCallback } from 'react';
+import { GoogleReCaptchaProvider, GoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+function LoginForm() {
+  const handleVerify = useCallback((token: string) => {
+    // Send token to backend for verification
+    fetch('/api/verify-recaptcha', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token })
+    });
+  }, []);
+
+  return (
+    <GoogleReCaptchaProvider reCaptchaKey="YOUR_RECAPTCHA_SITE_KEY">
+      <form>
+        <input type="email" placeholder="Email" />
+        <input type="password" placeholder="Password" />
+        <button type="submit">Login</button>
+        <GoogleReCaptcha onVerify={handleVerify} action="login" />
+      </form>
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+### With Action Parameter
+
+```tsx
+import { useCallback } from 'react';
+import { GoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+function CheckoutForm() {
+  const handleVerify = useCallback(async (token: string) => {
+    // Verify token on your server
+    const response = await fetch('/api/verify', {
+      method: 'POST',
+      body: JSON.stringify({ token, action: 'checkout' })
+    });
+    const data = await response.json();
+    
+    if (data.score > 0.5) {
+      // Proceed with checkout
+    }
+  }, []);
+
+  return <GoogleReCaptcha onVerify={handleVerify} action="checkout" />;
+}
+```
+
+### With Refresh on Submit
+
+```tsx
+import { useState, useCallback } from 'react';
+import { GoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+function ContactForm() {
+  const [token, setToken] = useState<string>('');
+  const [refreshReCaptcha, setRefreshReCaptcha] = useState(false);
+
+  const onVerify = useCallback((token: string) => {
+    setToken(token);
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Submit form with token
+    await fetch('/api/contact', {
+      method: 'POST',
+      body: JSON.stringify({ token, /* ...form data */ })
+    });
+    
+    // Trigger new reCAPTCHA validation
+    setRefreshReCaptcha(prev => !prev);
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input type="text" placeholder="Name" />
+      <input type="email" placeholder="Email" />
+      <textarea placeholder="Message" />
+      <button type="submit">Send</button>
+      
+      <GoogleReCaptcha
+        onVerify={onVerify}
+        action="contact"
+        refreshReCaptcha={refreshReCaptcha}
+      />
+    </form>
+  );
+}
+```
+
+### Refresh with Timestamp
+
+```tsx
+import { useState, useCallback } from 'react';
+import { GoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+function NewsletterSignup() {
+  const [refreshTime, setRefreshTime] = useState<number>(0);
+
+  const onVerify = useCallback((token: string) => {
+    console.log('Token received:', token);
+  }, []);
+
+  const handleSubscribe = () => {
+    // Trigger refresh by updating timestamp
+    setRefreshTime(Date.now());
+  };
+
+  return (
+    <div>
+      <button onClick={handleSubscribe}>Subscribe</button>
+      <GoogleReCaptcha
+        onVerify={onVerify}
+        action="subscribe"
+        refreshReCaptcha={refreshTime}
+      />
+    </div>
+  );
+}
+```
+
+### Async Verification Handler
+
+```tsx
+import { useCallback, useState } from 'react';
+import { GoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+function AsyncVerificationExample() {
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [score, setScore] = useState<number | null>(null);
+
+  const handleVerify = useCallback(async (token: string) => {
+    setIsVerifying(true);
+    
+    try {
+      const response = await fetch('/api/verify-recaptcha', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+      
+      const data = await response.json();
+      setScore(data.score);
+    } catch (error) {
+      console.error('Verification failed:', error);
+    } finally {
+      setIsVerifying(false);
+    }
+  }, []);
+
+  return (
+    <div>
+      {isVerifying && <p>Verifying...</p>}
+      {score !== null && <p>Score: {score}</p>}
+      <GoogleReCaptcha onVerify={handleVerify} action="example" />
+    </div>
+  );
+}
+```
+
+## Common Pitfalls
+
+<Warning>
+  **Infinite Loop with Inline Functions**
+  
+  The following code will cause an infinite loop because the `onVerify` function is recreated on every render:
+  
+  ```tsx
+  // DON'T DO THIS
+  function MyComponent() {
+    const [token, setToken] = useState('');
+    
+    return (
+      <GoogleReCaptcha
+        onVerify={(token) => setToken(token)} // This creates infinite renders!
+      />
+    );
+  }
+  ```
+  
+  **Solution**: Use `useCallback`:
+  
+  ```tsx
+  // DO THIS INSTEAD
+  function MyComponent() {
+    const [token, setToken] = useState('');
+    
+    const handleVerify = useCallback((token: string) => {
+      setToken(token);
+    }, []);
+    
+    return <GoogleReCaptcha onVerify={handleVerify} />;
+  }
+  ```
+</Warning>
+
+## How It Works
+
+The `GoogleReCaptcha` component uses React's `useEffect` hook to automatically trigger validation:
+
+1. When the component mounts
+2. When the `action` prop changes
+3. When the `onVerify` callback reference changes
+4. When the `refreshReCaptcha` value changes
+
+This means validation is **automatic** - you don't need to manually call any functions.
+
+<Note>
+  If you need more control over when validation occurs, consider using the [useGoogleReCaptcha hook](/components/use-google-recaptcha) instead, which gives you direct access to the `executeRecaptcha` function.
+</Note>
+
+## Best Practices
+
+<Tip>
+  **Use Meaningful Actions**: Choose descriptive action names that help you analyze score patterns in the reCAPTCHA admin console.
+</Tip>
+
+<Tip>
+  **Memoize Callbacks**: Always wrap your `onVerify` callback with `useCallback` to prevent unnecessary re-renders and potential infinite loops.
+</Tip>
+
+<Tip>
+  **Server-Side Verification**: Always verify the reCAPTCHA token on your backend server. Never trust client-side validation alone.
+</Tip>
+
+<Warning>
+  **Token Expiration**: reCAPTCHA tokens expire after a few minutes. Don't store tokens for long periods - generate them right before submission.
+</Warning>
+
+## When to Use This Component
+
+**Use `GoogleReCaptcha` when:**
+- You want automatic validation on component mount
+- You need declarative, React-like API
+- Validation should trigger on prop changes
+
+**Use [useGoogleReCaptcha](/components/use-google-recaptcha) hook when:**
+- You need manual control over validation timing
+- You want to trigger validation on specific events (button clicks, form submit)
+- You need to call validation multiple times programmatically
+
+## See Also
+
+- [GoogleReCaptchaProvider](/components/provider) - Required wrapper component
+- [useGoogleReCaptcha Hook](/components/use-google-recaptcha) - Hook for programmatic control
+- [withGoogleReCaptcha HOC](/components/with-google-recaptcha) - Higher-order component for class components

@@ -1,0 +1,469 @@
+---
+title: withGoogleReCaptcha
+description: Higher-Order Component (HOC) to inject reCAPTCHA functionality into class components
+---
+
+## Overview
+
+`withGoogleReCaptcha` is a Higher-Order Component (HOC) that injects reCAPTCHA functionality into your components via props. It's primarily useful for class components or when you prefer HOC patterns over hooks.
+
+**Source:** `src/with-google-recaptcha.tsx:14`
+
+## Import
+
+```typescript
+import { withGoogleReCaptcha } from 'react-google-recaptcha-v3';
+```
+
+## Signature
+
+```typescript
+const withGoogleReCaptcha = function <OwnProps>(
+  Component: ComponentType<OwnProps & Partial<IWithGoogleReCaptchaProps>>
+): ComponentType<OwnProps & Partial<IWithGoogleReCaptchaProps>>
+```
+
+## Parameters
+
+<ParamField path="Component" type="ComponentType<OwnProps & Partial<IWithGoogleReCaptchaProps>>" required>
+  The component to wrap. It will receive a `googleReCaptchaProps` prop containing reCAPTCHA functionality.
+</ParamField>
+
+## Injected Props
+
+The wrapped component receives the following prop:
+
+<ParamField path="googleReCaptchaProps" type="IGoogleReCaptchaConsumerProps">
+  Object containing reCAPTCHA functionality:
+  
+  <Expandable title="googleReCaptchaProps properties">
+    <ResponseField name="executeRecaptcha" type="((action?: string) => Promise<string>) | undefined">
+      Function to execute reCAPTCHA and get a token. Returns `undefined` until reCAPTCHA is loaded.
+      
+      - **action**: Optional string describing the action
+      - **Returns**: Promise resolving to the reCAPTCHA token
+    </ResponseField>
+    
+    <ResponseField name="container" type="string | HTMLElement | undefined">
+      The container element for explicit rendering, if configured.
+    </ResponseField>
+  </Expandable>
+</ParamField>
+
+## Return Value
+
+Returns a wrapped component with the same props as the original component, plus `googleReCaptchaProps`.
+
+## Features
+
+- **Preserves Component Name**: The wrapped component's `displayName` is set to `withGoogleReCaptcha(ComponentName)`
+- **Hoists Static Members**: Non-React static properties from the original component are preserved using `hoist-non-react-statics`
+
+## Usage Examples
+
+### Basic Class Component
+
+```tsx
+import React, { Component } from 'react';
+import { withGoogleReCaptcha, IWithGoogleReCaptchaProps } from 'react-google-recaptcha-v3';
+
+interface Props extends IWithGoogleReCaptchaProps {
+  // Your component props
+  username: string;
+}
+
+class LoginForm extends Component<Props> {
+  handleSubmit = async () => {
+    const { googleReCaptchaProps } = this.props;
+    const { executeRecaptcha } = googleReCaptchaProps;
+
+    if (!executeRecaptcha) {
+      console.log('Recaptcha not ready');
+      return;
+    }
+
+    const token = await executeRecaptcha('login');
+    console.log('Token:', token);
+    // Submit to backend
+  };
+
+  render() {
+    return (
+      <form>
+        <input type="text" value={this.props.username} />
+        <button onClick={this.handleSubmit}>Login</button>
+      </form>
+    );
+  }
+}
+
+export default withGoogleReCaptcha(LoginForm);
+```
+
+### Functional Component (Alternative to Hook)
+
+```tsx
+import { withGoogleReCaptcha, IWithGoogleReCaptchaProps } from 'react-google-recaptcha-v3';
+
+interface Props extends IWithGoogleReCaptchaProps {
+  onSubmit: (data: any) => void;
+}
+
+function ContactForm({ googleReCaptchaProps, onSubmit }: Props) {
+  const handleSubmit = async () => {
+    const { executeRecaptcha } = googleReCaptchaProps;
+
+    if (!executeRecaptcha) {
+      console.log('Recaptcha not ready');
+      return;
+    }
+
+    const token = await executeRecaptcha('contact');
+    onSubmit({ token });
+  };
+
+  return (
+    <form>
+      <button onClick={handleSubmit}>Submit</button>
+    </form>
+  );
+}
+
+export default withGoogleReCaptcha(ContactForm);
+```
+
+### With Multiple Actions
+
+```tsx
+import React, { Component } from 'react';
+import { withGoogleReCaptcha, IWithGoogleReCaptchaProps } from 'react-google-recaptcha-v3';
+
+class Dashboard extends Component<IWithGoogleReCaptchaProps> {
+  executeAction = async (action: string) => {
+    const { executeRecaptcha } = this.props.googleReCaptchaProps;
+
+    if (!executeRecaptcha) {
+      throw new Error('Recaptcha not ready');
+    }
+
+    return await executeRecaptcha(action);
+  };
+
+  handleLogin = async () => {
+    const token = await this.executeAction('login');
+    // Process login
+  };
+
+  handleLogout = async () => {
+    const token = await this.executeAction('logout');
+    // Process logout
+  };
+
+  handleDelete = async () => {
+    const token = await this.executeAction('delete');
+    // Process deletion
+  };
+
+  render() {
+    return (
+      <div>
+        <button onClick={this.handleLogin}>Login</button>
+        <button onClick={this.handleLogout}>Logout</button>
+        <button onClick={this.handleDelete}>Delete Account</button>
+      </div>
+    );
+  }
+}
+
+export default withGoogleReCaptcha(Dashboard);
+```
+
+### With State and Error Handling
+
+```tsx
+import React, { Component } from 'react';
+import { withGoogleReCaptcha, IWithGoogleReCaptchaProps } from 'react-google-recaptcha-v3';
+
+interface State {
+  loading: boolean;
+  error: string | null;
+}
+
+class SecureForm extends Component<IWithGoogleReCaptchaProps, State> {
+  state: State = {
+    loading: false,
+    error: null
+  };
+
+  handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const { executeRecaptcha } = this.props.googleReCaptchaProps;
+
+    if (!executeRecaptcha) {
+      this.setState({ error: 'reCAPTCHA not ready' });
+      return;
+    }
+
+    this.setState({ loading: true, error: null });
+
+    try {
+      const token = await executeRecaptcha('form_submit');
+      
+      const response = await fetch('/api/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+
+      if (!response.ok) {
+        throw new Error('Submission failed');
+      }
+
+      console.log('Success!');
+    } catch (error) {
+      this.setState({
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    } finally {
+      this.setState({ loading: false });
+    }
+  };
+
+  render() {
+    const { loading, error } = this.state;
+    const { executeRecaptcha } = this.props.googleReCaptchaProps;
+
+    return (
+      <form onSubmit={this.handleSubmit}>
+        {error && <div className="error">{error}</div>}
+        <button type="submit" disabled={loading || !executeRecaptcha}>
+          {loading ? 'Submitting...' : 'Submit'}
+        </button>
+      </form>
+    );
+  }
+}
+
+export default withGoogleReCaptcha(SecureForm);
+```
+
+### Composing with Other HOCs
+
+```tsx
+import React, { Component } from 'react';
+import { withGoogleReCaptcha, IWithGoogleReCaptchaProps } from 'react-google-recaptcha-v3';
+import { connect } from 'react-redux';
+import { compose } from 'redux';
+
+interface OwnProps {
+  userId: string;
+}
+
+interface StateProps {
+  user: any;
+}
+
+interface DispatchProps {
+  updateUser: (data: any) => void;
+}
+
+type Props = OwnProps & StateProps & DispatchProps & IWithGoogleReCaptchaProps;
+
+class UserProfile extends Component<Props> {
+  handleUpdate = async () => {
+    const { executeRecaptcha } = this.props.googleReCaptchaProps;
+
+    if (!executeRecaptcha) return;
+
+    const token = await executeRecaptcha('update_profile');
+    this.props.updateUser({ token, userId: this.props.userId });
+  };
+
+  render() {
+    return (
+      <div>
+        <h1>{this.props.user.name}</h1>
+        <button onClick={this.handleUpdate}>Update Profile</button>
+      </div>
+    );
+  }
+}
+
+const mapStateToProps = (state: any): StateProps => ({
+  user: state.user
+});
+
+const mapDispatchToProps: DispatchProps = {
+  updateUser: (data) => ({ type: 'UPDATE_USER', payload: data })
+};
+
+export default compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  withGoogleReCaptcha
+)(UserProfile);
+```
+
+### TypeScript with Strict Typing
+
+```tsx
+import React, { Component } from 'react';
+import {
+  withGoogleReCaptcha,
+  IWithGoogleReCaptchaProps,
+  IGoogleReCaptchaConsumerProps
+} from 'react-google-recaptcha-v3';
+
+interface OwnProps {
+  title: string;
+  onSuccess: (token: string) => void;
+}
+
+type Props = OwnProps & IWithGoogleReCaptchaProps;
+
+class ProtectedAction extends Component<Props> {
+  private get recaptcha(): IGoogleReCaptchaConsumerProps {
+    return this.props.googleReCaptchaProps;
+  }
+
+  private async getToken(action: string): Promise<string | null> {
+    const { executeRecaptcha } = this.recaptcha;
+
+    if (!executeRecaptcha) {
+      console.warn('reCAPTCHA not available');
+      return null;
+    }
+
+    try {
+      return await executeRecaptcha(action);
+    } catch (error) {
+      console.error('reCAPTCHA error:', error);
+      return null;
+    }
+  }
+
+  handleAction = async () => {
+    const token = await this.getToken('protected_action');
+    
+    if (token) {
+      this.props.onSuccess(token);
+    }
+  };
+
+  render() {
+    const isReady = !!this.recaptcha.executeRecaptcha;
+
+    return (
+      <div>
+        <h2>{this.props.title}</h2>
+        <button onClick={this.handleAction} disabled={!isReady}>
+          {isReady ? 'Execute Action' : 'Loading...'}
+        </button>
+      </div>
+    );
+  }
+}
+
+export default withGoogleReCaptcha(ProtectedAction);
+```
+
+## Display Name
+
+The HOC automatically sets a descriptive display name for debugging:
+
+```tsx
+class MyComponent extends Component {}
+
+const Wrapped = withGoogleReCaptcha(MyComponent);
+console.log(Wrapped.displayName); // "withGoogleReCaptcha(MyComponent)"
+```
+
+## Static Properties
+
+The HOC preserves static properties using `hoist-non-react-statics`:
+
+```tsx
+class MyComponent extends Component {
+  static myStaticMethod() {
+    return 'hello';
+  }
+}
+
+const Wrapped = withGoogleReCaptcha(MyComponent);
+console.log(Wrapped.myStaticMethod()); // "hello"
+```
+
+## TypeScript Interfaces
+
+```typescript
+interface IWithGoogleReCaptchaProps {
+  googleReCaptchaProps: IGoogleReCaptchaConsumerProps;
+}
+
+interface IGoogleReCaptchaConsumerProps {
+  executeRecaptcha?: (action?: string) => Promise<string>;
+  container?: string | HTMLElement;
+}
+```
+
+See [TypeScript Interfaces](/api/typescript-interfaces) for complete type definitions.
+
+## Comparison with useGoogleReCaptcha Hook
+
+| Feature | withGoogleReCaptcha HOC | useGoogleReCaptcha Hook |
+|---------|-------------------------|-------------------------|
+| Component type | Class & Function | Function only |
+| Access pattern | Props | Hook return value |
+| Composability | Can chain with other HOCs | Compose with other hooks |
+| Readability | More boilerplate | More concise |
+| Modern React | Legacy pattern | Modern pattern |
+
+**Use the HOC when:**
+- Working with class components
+- Composing multiple HOCs together
+- Maintaining legacy codebases
+- You prefer HOC patterns
+
+**Use the hook when:**
+- Working with functional components
+- Following modern React patterns
+- Want cleaner, more readable code
+- Building new features
+
+## Important Notes
+
+### Provider Required
+
+Components wrapped with `withGoogleReCaptcha` must be descendants of `GoogleReCaptchaProvider`:
+
+```tsx
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+import MyWrappedComponent from './MyWrappedComponent';
+
+function App() {
+  return (
+    <GoogleReCaptchaProvider reCaptchaKey="YOUR_SITE_KEY">
+      <MyWrappedComponent />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+### Check Availability
+
+Always check if `executeRecaptcha` is available before calling:
+
+```tsx
+const { executeRecaptcha } = this.props.googleReCaptchaProps;
+
+if (!executeRecaptcha) {
+  // Not ready yet
+  return;
+}
+```
+
+## Related APIs
+
+- [GoogleReCaptchaProvider](/api/google-recaptcha-provider) - Required provider component
+- [useGoogleReCaptcha](/api/use-google-recaptcha-hook) - Hook alternative for functional components
+- [GoogleReCaptcha](/api/google-recaptcha) - Component for automatic execution
+- [TypeScript Interfaces](/api/typescript-interfaces) - Type definitions

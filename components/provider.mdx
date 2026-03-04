@@ -1,0 +1,285 @@
+---
+title: GoogleReCaptchaProvider
+description: The main provider component that loads Google ReCAPTCHA v3 and provides context to your application
+---
+
+The `GoogleReCaptchaProvider` component is a React Context provider that loads the Google ReCAPTCHA v3 script and makes the reCAPTCHA API available to all child components.
+
+<Note>
+  Place the `GoogleReCaptchaProvider` as high as possible in your React component tree to ensure you only have one instance of Google ReCAPTCHA per page.
+</Note>
+
+## Installation
+
+```bash
+npm install react-google-recaptcha-v3
+```
+
+## Basic Usage
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```tsx
+    import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+
+    function App() {
+      return (
+        <GoogleReCaptchaProvider reCaptchaKey="YOUR_RECAPTCHA_SITE_KEY">
+          <YourApp />
+        </GoogleReCaptchaProvider>
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="JavaScript">
+    ```jsx
+    import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+
+    function App() {
+      return (
+        <GoogleReCaptchaProvider reCaptchaKey="YOUR_RECAPTCHA_SITE_KEY">
+          <YourApp />
+        </GoogleReCaptchaProvider>
+      );
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Props
+
+<ParamField path="reCaptchaKey" type="string" required>
+  Your Google ReCAPTCHA v3 site key. You can obtain one from the [Google ReCAPTCHA admin console](https://www.google.com/recaptcha/admin).
+</ParamField>
+
+<ParamField path="children" type="ReactNode" required>
+  The React components that should have access to the ReCAPTCHA context.
+</ParamField>
+
+<ParamField path="language" type="string">
+  Optional language code for the ReCAPTCHA widget. See [supported languages](https://developers.google.com/recaptcha/docs/language).
+  
+  Example: `"en"`, `"es"`, `"fr"`, `"de"`, etc.
+</ParamField>
+
+<ParamField path="useRecaptchaNet" type="boolean" default="false">
+  Whether to load the script from `recaptcha.net` instead of `google.com`. This is useful for regions where `google.com` is blocked.
+  
+  See [Google's FAQ](https://developers.google.com/recaptcha/docs/faq#can-i-use-recaptcha-globally) for more information.
+</ParamField>
+
+<ParamField path="useEnterprise" type="boolean" default="false">
+  Enable Google ReCAPTCHA Enterprise. When enabled, you must create Enterprise keys (not standard v3 keys).
+  
+  <Warning>
+    Enterprise keys are different from standard reCAPTCHA v3 keys. You must select "Scoring" as the integration type, which is equivalent to reCAPTCHA v3.
+  </Warning>
+  
+  See the [migration guide](https://cloud.google.com/recaptcha-enterprise/docs/migrate-recaptcha) for more information.
+</ParamField>
+
+<ParamField path="scriptProps" type="object">
+  Configuration options for the injected `<script>` tag.
+  
+  <ParamField path="scriptProps.nonce" type="string">
+    Content Security Policy nonce for the script tag.
+  </ParamField>
+  
+  <ParamField path="scriptProps.defer" type="boolean" default="false">
+    Add the `defer` attribute to the script tag.
+  </ParamField>
+  
+  <ParamField path="scriptProps.async" type="boolean" default="false">
+    Add the `async` attribute to the script tag.
+  </ParamField>
+  
+  <ParamField path="scriptProps.appendTo" type="'head' | 'body'" default="'head'">
+    Where to append the script tag in the document.
+  </ParamField>
+  
+  <ParamField path="scriptProps.id" type="string" default="'google-recaptcha-v3'">
+    Custom ID for the script tag.
+  </ParamField>
+  
+  <ParamField path="scriptProps.onLoadCallbackName" type="string" default="'onRecaptchaLoadCallback'">
+    Custom name for the global onload callback function.
+  </ParamField>
+</ParamField>
+
+<ParamField path="container" type="object">
+  Configuration for rendering the reCAPTCHA badge in a custom container element.
+  
+  <ParamField path="container.element" type="string | HTMLElement">
+    The ID of a DOM element or an HTMLElement reference where the reCAPTCHA badge should be rendered.
+    
+    If provided as a string, it will be used as both the container ID and a `<div>` with this ID will be created by the `GoogleReCaptcha` component.
+  </ParamField>
+  
+  <ParamField path="container.parameters" type="object">
+    Configuration parameters for the reCAPTCHA badge.
+    
+    <ParamField path="container.parameters.badge" type="'inline' | 'bottomleft' | 'bottomright'">
+      Position of the reCAPTCHA badge. Use `'inline'` to render it within the custom container.
+    </ParamField>
+    
+    <ParamField path="container.parameters.theme" type="'dark' | 'light'">
+      Theme for the reCAPTCHA badge.
+    </ParamField>
+    
+    <ParamField path="container.parameters.tabindex" type="number">
+      Tab index for the reCAPTCHA badge.
+    </ParamField>
+    
+    <ParamField path="container.parameters.callback" type="() => void">
+      Callback function executed when the user successfully completes the reCAPTCHA challenge.
+    </ParamField>
+    
+    <ParamField path="container.parameters.expiredCallback" type="() => void">
+      Callback function executed when the reCAPTCHA response expires.
+    </ParamField>
+    
+    <ParamField path="container.parameters.errorCallback" type="() => void">
+      Callback function executed when reCAPTCHA encounters an error.
+    </ParamField>
+  </ParamField>
+</ParamField>
+
+## Advanced Examples
+
+### With Custom Script Configuration
+
+```tsx
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+
+function App() {
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey="YOUR_RECAPTCHA_SITE_KEY"
+      scriptProps={{
+        async: true,
+        defer: true,
+        appendTo: 'body',
+        nonce: 'your-csp-nonce'
+      }}
+    >
+      <YourApp />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+### With Language Support
+
+```tsx
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+
+function App() {
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey="YOUR_RECAPTCHA_SITE_KEY"
+      language="es" // Spanish
+    >
+      <YourApp />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+### With Custom Badge Container
+
+```tsx
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+
+function App() {
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey="YOUR_RECAPTCHA_SITE_KEY"
+      container={{
+        element: 'recaptcha-badge',
+        parameters: {
+          badge: 'inline',
+          theme: 'dark'
+        }
+      }}
+    >
+      <YourApp />
+      {/* The badge will be rendered inside this div */}
+      <div id="recaptcha-badge" />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+### With Enterprise Edition
+
+```tsx
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+
+function App() {
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey="YOUR_ENTERPRISE_SITE_KEY"
+      useEnterprise={true}
+    >
+      <YourApp />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+### Using recaptcha.net Domain
+
+```tsx
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+
+function App() {
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey="YOUR_RECAPTCHA_SITE_KEY"
+      useRecaptchaNet={true}
+    >
+      <YourApp />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+## Best Practices
+
+<Tip>
+  **Single Provider Instance**: Only use one `GoogleReCaptchaProvider` per page. Place it as high as possible in your component tree to avoid unnecessary re-initialization.
+</Tip>
+
+<Tip>
+  **Framework Integration**: When using with Next.js, place the provider in your `_app.tsx` file. For React Router, place it at the root of your routing configuration.
+</Tip>
+
+<Warning>
+  **Script Loading**: The provider automatically injects the Google ReCAPTCHA script. Do not manually add the script tag to your HTML.
+</Warning>
+
+<Note>
+  **Environment Variables**: Store your reCAPTCHA site key in environment variables (e.g., `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`) instead of hardcoding it.
+</Note>
+
+## Context Value
+
+The provider makes the following values available through React Context:
+
+- `executeRecaptcha`: Function to execute reCAPTCHA validation (available after script loads)
+- `container`: The container element reference (if custom container is used)
+
+These values can be accessed using the [useGoogleReCaptcha](/components/use-google-recaptcha) hook or the [withGoogleReCaptcha](/components/with-google-recaptcha) HOC.
+
+## Cleanup
+
+The provider automatically cleans up when unmounted:
+- Removes the injected script tag
+- Removes the reCAPTCHA badge
+- Cleans up global window variables
+
+## See Also
+
+- [useGoogleReCaptcha Hook](/components/use-google-recaptcha) - React Hook for accessing reCAPTCHA
+- [GoogleReCaptcha Component](/components/google-recaptcha) - Declarative component for reCAPTCHA validation
+- [withGoogleReCaptcha HOC](/components/with-google-recaptcha) - Higher-order component for class components

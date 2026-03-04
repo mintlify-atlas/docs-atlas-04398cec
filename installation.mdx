@@ -1,0 +1,137 @@
+---
+title: Installation
+description: Install react-google-recaptcha-v3 in your React project
+---
+
+## Package installation
+
+Install the library using your preferred package manager:
+
+<CodeGroup>
+
+```bash npm
+npm install react-google-recaptcha-v3
+```
+
+```bash yarn
+yarn add react-google-recaptcha-v3
+```
+
+```bash pnpm
+pnpm add react-google-recaptcha-v3
+```
+
+</CodeGroup>
+
+## Peer dependencies
+
+The library requires React and React DOM as peer dependencies. Make sure you have compatible versions installed:
+
+```json package.json
+{
+  "dependencies": {
+    "react": "^16.3 || ^17.0 || ^18.0 || ^19.0",
+    "react-dom": "^17.0 || ^18.0 || ^19.0"
+  }
+}
+```
+
+<Info>
+  The library supports React 16.3+ (for Context API support), React 17, React 18, and React 19.
+</Info>
+
+## Get a reCAPTCHA key
+
+Before you can use the library, you need to obtain a site key from Google:
+
+<Steps>
+  <Step title="Visit the reCAPTCHA admin console">
+    Go to [https://www.google.com/recaptcha/admin](https://www.google.com/recaptcha/admin) and sign in with your Google account.
+  </Step>
+  
+  <Step title="Register a new site">
+    Click the **+** button to create a new site key.
+  </Step>
+  
+  <Step title="Configure your site">
+    - **Label**: Give your site a descriptive name
+    - **reCAPTCHA type**: Select **reCAPTCHA v3**
+    - **Domains**: Add your domain(s). For development, include `localhost`
+    - Accept the reCAPTCHA Terms of Service
+  </Step>
+  
+  <Step title="Copy your keys">
+    After registration, you'll receive:
+    - **Site key** - Use this in your React app (client-side)
+    - **Secret key** - Use this on your backend for verification (never expose this client-side)
+  </Step>
+</Steps>
+
+<Warning>
+  Never commit your secret key to version control or expose it in client-side code. Only use the site key in your React application.
+</Warning>
+
+## Environment variables (recommended)
+
+Store your reCAPTCHA site key in environment variables for better security and configuration management:
+
+<CodeGroup>
+
+```bash .env (Create React App / Vite)
+REACT_APP_RECAPTCHA_SITE_KEY=your_site_key_here
+# or for Vite
+VITE_RECAPTCHA_SITE_KEY=your_site_key_here
+```
+
+```bash .env.local (Next.js)
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=your_site_key_here
+```
+
+</CodeGroup>
+
+<Note>
+  Environment variables must be prefixed with:
+  - `REACT_APP_` for Create React App
+  - `VITE_` for Vite
+  - `NEXT_PUBLIC_` for Next.js
+  
+  This makes them available in the browser.
+</Note>
+
+## TypeScript support
+
+The library includes TypeScript type definitions out of the box. No additional `@types` package is needed.
+
+```typescript
+import { 
+  GoogleReCaptchaProvider, 
+  useGoogleReCaptcha 
+} from 'react-google-recaptcha-v3';
+
+// Types are automatically available
+const { executeRecaptcha } = useGoogleReCaptcha();
+```
+
+## Verification
+
+Verify your installation by importing the provider:
+
+```tsx App.tsx
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+
+function App() {
+  return (
+    <GoogleReCaptchaProvider reCaptchaKey="your-site-key">
+      <div>Your app content</div>
+    </GoogleReCaptchaProvider>
+  );
+}
+
+export default App;
+```
+
+If the import works without errors, you're ready to go!
+
+## Next steps
+
+Now that you have the library installed and your reCAPTCHA key ready, continue to the [quickstart guide](/quickstart) to implement your first reCAPTCHA validation.

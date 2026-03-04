@@ -1,0 +1,86 @@
+---
+title: Introduction
+description: Integrate Google reCAPTCHA v3 seamlessly into your React applications
+---
+
+## What is react-google-recaptcha-v3?
+
+`react-google-recaptcha-v3` is a React library that provides an easy-to-use integration for Google reCAPTCHA v3. It offers a set of components and hooks that allow you to protect your React applications from spam and abuse without disrupting the user experience.
+
+## Why Google reCAPTCHA v3?
+
+Unlike previous versions of reCAPTCHA that require users to complete challenges (like clicking on images), reCAPTCHA v3 works invisibly in the background. It analyzes user behavior and returns a score (0.0 to 1.0) indicating the likelihood that the interaction is legitimate.
+
+**Key benefits:**
+
+- **Frictionless user experience** - No CAPTCHAs to solve, no interruptions
+- **Adaptive risk analysis** - Returns a score for each request based on interactions with your site
+- **Flexible implementation** - Trigger validation on specific actions (login, checkout, form submission, etc.)
+- **Modern approach** - Works seamlessly with modern React patterns including hooks
+
+## How it works
+
+The library provides three main ways to integrate reCAPTCHA v3:
+
+<Steps>
+  <Step title="Wrap your app with GoogleReCaptchaProvider">
+    The provider component loads the reCAPTCHA script and makes it available throughout your React tree.
+  </Step>
+  
+  <Step title="Choose your integration method">
+    Use the `useGoogleReCaptcha` hook (recommended), the `GoogleReCaptcha` component, or the `withGoogleReCaptcha` HOC.
+  </Step>
+  
+  <Step title="Execute reCAPTCHA validation">
+    Trigger validation on user actions and receive a token to verify on your backend.
+  </Step>
+  
+  <Step title="Verify the token server-side">
+    Send the token to Google's verification API to get the risk score and make decisions about the request.
+  </Step>
+</Steps>
+
+## Features
+
+- **Multiple integration patterns** - Hook, component, or HOC based on your preference
+- **TypeScript support** - Full type definitions included
+- **Enterprise support** - Compatible with reCAPTCHA Enterprise
+- **Customizable** - Control script loading, language, badge placement, and more
+- **Framework agnostic** - Works with Next.js, Create React App, Vite, and other React frameworks
+- **Lightweight** - Minimal bundle size impact
+
+## Prerequisites
+
+Before using this library, you'll need:
+
+<Note>
+  A reCAPTCHA v3 site key from Google. Get one at [https://www.google.com/recaptcha/admin](https://www.google.com/recaptcha/admin)
+  
+  When creating your key, make sure to:
+  - Select **reCAPTCHA v3** as the type
+  - Add your domain(s) to the allowed list
+  - For development, you can add `localhost`
+</Note>
+
+## Use cases
+
+Common scenarios where react-google-recaptcha-v3 is useful:
+
+- **Login/Registration forms** - Prevent bot account creation
+- **Contact forms** - Reduce spam submissions
+- **E-commerce checkout** - Protect against fraudulent transactions
+- **Comment systems** - Filter out spam comments
+- **API endpoints** - Validate requests before processing
+- **Password reset** - Prevent abuse of reset mechanisms
+
+## Enterprise version
+
+<Info>
+  The library also supports **reCAPTCHA Enterprise**, Google's premium version with additional features like advanced risk analysis, custom rules, and detailed analytics.
+  
+  When using Enterprise, you must create new keys in the Google Cloud Console and set the `useEnterprise` prop to `true`.
+</Info>
+
+## What's next?
+
+Ready to get started? Continue to the [installation guide](/installation) to add the library to your project, or jump straight to the [quickstart](/quickstart) to see a complete working example.

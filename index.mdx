@@ -1,97 +1,216 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "React Google reCAPTCHA V3"
+description: "Integrate Google reCAPTCHA V3 into your React application with ease"
+mode: "custom"
 ---
 
-## Setting up
+<div className="relative overflow-hidden dark:bg-[#020627] bg-white py-20">
+  <div className="max-w-6xl mx-auto px-6">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+      <div className="lg:col-span-7">
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold dark:text-white text-gray-900 mb-6">
+          React Google reCAPTCHA V3
+        </h1>
+        <p className="text-lg sm:text-xl dark:text-gray-400 text-gray-600 mb-8 max-w-2xl">
+          Protect your React applications from spam and abuse with Google's reCAPTCHA V3. Easy-to-use components, hooks, and HOCs for seamless integration.
+        </p>
+        <div className="flex flex-wrap gap-4">
+          <a
+            href="/quickstart"
+            className="inline-flex items-center px-6 py-3 rounded-lg font-semibold text-white transition-all duration-200"
+            style={{ backgroundColor: "#848c8e" }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#6a7173"}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = "#848c8e"}
+          >
+            Get Started
+            <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </a>
+          <a
+            href="/api/google-recaptcha-provider"
+            className="inline-flex items-center px-6 py-3 rounded-lg font-semibold dark:text-white text-gray-900 dark:bg-white/10 bg-gray-100 dark:border-white/30 border border-gray-300 dark:hover:bg-white/20 hover:bg-gray-200 transition-all duration-200"
+          >
+            API Reference
+          </a>
+        </div>
+      </div>
+      <div className="lg:col-span-5 hidden lg:block">
+        <div className="dark:bg-[#1a1d27] bg-gray-50 rounded-2xl p-6 dark:border-[#27272a] border border-gray-200">
+          <pre className="text-sm dark:text-gray-300 text-gray-700 overflow-x-auto">
+{`import { 
+  GoogleReCaptchaProvider,
+  useGoogleReCaptcha
+} from 'react-google-recaptcha-v3';
 
-Get your documentation site up and running in minutes.
+function App() {
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey="YOUR_SITE_KEY"
+    >
+      <YourComponent />
+    </GoogleReCaptchaProvider>
+  );
+}`}
+          </pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-bold dark:text-white text-gray-900 mb-4">
+    Quick Start
+  </h2>
+  <p className="text-base dark:text-gray-400 text-gray-600 mb-8">
+    Get reCAPTCHA V3 working in your React app in just a few steps
+  </p>
 
-## Make it yours
+  <Steps>
+    <Step title="Install the package">
+      Install react-google-recaptcha-v3 via npm, yarn, or pnpm:
 
-Design a docs site that looks great and empowers your users.
+      <CodeGroup>
+      ```bash npm
+      npm install react-google-recaptcha-v3
+      ```
 
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
-  </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
-  </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
+      ```bash yarn
+      yarn add react-google-recaptcha-v3
+      ```
 
-## Create beautiful pages
+      ```bash pnpm
+      pnpm add react-google-recaptcha-v3
+      ```
+      </CodeGroup>
+    </Step>
 
-Everything you need to create world-class documentation.
+    <Step title="Get your reCAPTCHA key">
+      Register your site and get a reCAPTCHA V3 site key from the [Google reCAPTCHA admin console](https://www.google.com/recaptcha/admin).
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+      <Note>
+        Make sure to select **reCAPTCHA v3** when creating your site key. V2 keys will not work with this library.
+      </Note>
+    </Step>
 
-## Need inspiration?
+    <Step title="Wrap your app with the provider">
+      Add `GoogleReCaptchaProvider` at the root of your component tree:
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+      ```tsx
+      import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+
+      function App() {
+        return (
+          <GoogleReCaptchaProvider reCaptchaKey="YOUR_SITE_KEY">
+            <YourApp />
+          </GoogleReCaptchaProvider>
+        );
+      }
+      ```
+    </Step>
+
+    <Step title="Execute reCAPTCHA verification">
+      Use the `useGoogleReCaptcha` hook to verify user actions:
+
+      ```tsx
+      import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+      function LoginForm() {
+        const { executeRecaptcha } = useGoogleReCaptcha();
+
+        const handleSubmit = async (e) => {
+          e.preventDefault();
+          
+          if (!executeRecaptcha) {
+            console.log('Execute recaptcha not yet available');
+            return;
+          }
+
+          const token = await executeRecaptcha('login');
+          // Send token to your backend for verification
+        };
+
+        return <form onSubmit={handleSubmit}>...</form>;
+      }
+      ```
+    </Step>
+  </Steps>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-bold dark:text-white text-gray-900 mb-4">
+    Key Features
+  </h2>
+  <p className="text-base dark:text-gray-400 text-gray-600 mb-8">
+    Everything you need for seamless reCAPTCHA V3 integration
+  </p>
+
+  <CardGroup cols={3}>
+    <Card title="React Hooks" icon="code" href="/components/use-google-recaptcha">
+      Modern React Hook API for programmatic verification
+    </Card>
+    <Card title="Context Provider" icon="layer-group" href="/components/provider">
+      React Context-based provider for global reCAPTCHA management
+    </Card>
+    <Card title="TypeScript Support" icon="file-code" href="/api/typescript-interfaces">
+      Full TypeScript type definitions included out of the box
+    </Card>
+    <Card title="Enterprise Ready" icon="building" href="/guides/enterprise">
+      Support for Google reCAPTCHA Enterprise edition
+    </Card>
+    <Card title="Customizable" icon="sliders" href="/guides/script-customization">
+      Configure script loading, containers, and more
+    </Card>
+    <Card title="i18n Ready" icon="globe" href="/guides/internationalization">
+      Built-in internationalization support for global apps
+    </Card>
+  </CardGroup>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-bold dark:text-white text-gray-900 mb-4">
+    Explore the Documentation
+  </h2>
+  <p className="text-base dark:text-gray-400 text-gray-600 mb-8">
+    Find detailed guides and API references for all components
+  </p>
+
+  <CardGroup cols={2}>
+    <Card title="Components" icon="puzzle-piece" href="/components/provider">
+      Learn about GoogleReCaptchaProvider, GoogleReCaptcha, and more
+    </Card>
+    <Card title="API Reference" icon="book" href="/api/google-recaptcha-provider">
+      Comprehensive API documentation for all exports
+    </Card>
+    <Card title="Guides" icon="compass" href="/guides/enterprise">
+      Deep dive guides for advanced use cases
+    </Card>
+    <Card title="Examples" icon="code" href="/examples/basic-usage">
+      Real-world examples and code snippets
+    </Card>
+  </CardGroup>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="dark:bg-[#1a1d27] bg-gray-50 rounded-2xl p-8 dark:border-[#27272a] border border-gray-200">
+    <h2 className="text-2xl font-bold dark:text-white text-gray-900 mb-3">
+      Ready to protect your app?
+    </h2>
+    <p className="text-base dark:text-gray-400 text-gray-600 mb-6">
+      Start integrating Google reCAPTCHA V3 into your React application today.
+    </p>
+    <a
+      href="/installation"
+      className="inline-flex items-center px-6 py-3 rounded-lg font-semibold text-white transition-all duration-200"
+      style={{ backgroundColor: "#848c8e" }}
+      onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#6a7173"}
+      onMouseOut={(e) => e.currentTarget.style.backgroundColor = "#848c8e"}
+    >
+      Get Started
+      <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+      </svg>
+    </a>
+  </div>
+</div>

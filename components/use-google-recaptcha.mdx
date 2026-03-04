@@ -1,0 +1,504 @@
+---
+title: useGoogleReCaptcha
+description: React Hook for programmatically executing Google ReCAPTCHA v3 validation
+---
+
+The `useGoogleReCaptcha` hook provides programmatic access to the reCAPTCHA validation function. This is the **recommended approach** for most use cases as it gives you full control over when validation occurs.
+
+<Note>
+  This hook must be used within a component that is wrapped by `GoogleReCaptchaProvider`.
+</Note>
+
+## Installation
+
+```bash
+npm install react-google-recaptcha-v3
+```
+
+## Basic Usage
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```tsx
+    import { useCallback } from 'react';
+    import { GoogleReCaptchaProvider, useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+    function YourComponent() {
+      const { executeRecaptcha } = useGoogleReCaptcha();
+
+      const handleSubmit = useCallback(async () => {
+        if (!executeRecaptcha) {
+          console.log('Execute recaptcha not yet available');
+          return;
+        }
+
+        const token = await executeRecaptcha('submit');
+        // Send token to your backend
+        console.log('Token:', token);
+      }, [executeRecaptcha]);
+
+      return <button onClick={handleSubmit}>Submit</button>;
+    }
+
+    function App() {
+      return (
+        <GoogleReCaptchaProvider reCaptchaKey="YOUR_RECAPTCHA_SITE_KEY">
+          <YourComponent />
+        </GoogleReCaptchaProvider>
+      );
+    }
+    ```
+  </Tab>
+  <Tab title="JavaScript">
+    ```jsx
+    import { useCallback } from 'react';
+    import { GoogleReCaptchaProvider, useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+    function YourComponent() {
+      const { executeRecaptcha } = useGoogleReCaptcha();
+
+      const handleSubmit = useCallback(async () => {
+        if (!executeRecaptcha) {
+          console.log('Execute recaptcha not yet available');
+          return;
+        }
+
+        const token = await executeRecaptcha('submit');
+        // Send token to your backend
+        console.log('Token:', token);
+      }, [executeRecaptcha]);
+
+      return <button onClick={handleSubmit}>Submit</button>;
+    }
+
+    function App() {
+      return (
+        <GoogleReCaptchaProvider reCaptchaKey="YOUR_RECAPTCHA_SITE_KEY">
+          <YourComponent />
+        </GoogleReCaptchaProvider>
+      );
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Return Value
+
+The hook returns an object with the following properties:
+
+<ParamField path="executeRecaptcha" type="((action?: string) => Promise<string>) | undefined">
+  Function to execute reCAPTCHA validation and get a token.
+  
+  - **Returns**: A Promise that resolves to a reCAPTCHA token string
+  - **Parameter**: `action` (optional) - A string describing the action being performed
+  - **Value**: `undefined` until the reCAPTCHA script has loaded successfully
+  
+  <Warning>
+    Always check if `executeRecaptcha` is defined before calling it, as it will be `undefined` until the reCAPTCHA script loads.
+  </Warning>
+</ParamField>
+
+<ParamField path="container" type="string | HTMLElement | undefined">
+  Reference to the custom container element if one was specified in the `GoogleReCaptchaProvider`.
+  
+  This is only relevant if you're using a custom badge container.
+</ParamField>
+
+## Examples
+
+### Form Submission
+
+```tsx
+import { useCallback, FormEvent } from 'react';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+function LoginForm() {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+
+  const handleSubmit = useCallback(async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (!executeRecaptcha) {
+      console.log('Execute recaptcha not yet available');
+      return;
+    }
+
+    // Get the token
+    const token = await executeRecaptcha('login');
+
+    // Get form data
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get('email');
+    const password = formData.get('password');
+
+    // Send to backend with token
+    const response = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, recaptchaToken: token })
+    });
+
+    const data = await response.json();
+    console.log('Login response:', data);
+  }, [executeRecaptcha]);
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input name="email" type="email" required />
+      <input name="password" type="password" required />
+      <button type="submit">Login</button>
+    </form>
+  );
+}
+```
+
+### Button Click Validation
+
+```tsx
+import { useCallback, useState } from 'react';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+function VerifyButton() {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+  const [token, setToken] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+
+  const handleClick = useCallback(async () => {
+    if (!executeRecaptcha) {
+      console.log('Execute recaptcha not yet available');
+      return;
+    }
+
+    setLoading(true);
+    
+    try {
+      const token = await executeRecaptcha('verify_button');
+      setToken(token);
+      console.log('Verification successful:', token);
+    } catch (error) {
+      console.error('Verification failed:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [executeRecaptcha]);
+
+  return (
+    <div>
+      <button onClick={handleClick} disabled={loading || !executeRecaptcha}>
+        {loading ? 'Verifying...' : 'Verify'}
+      </button>
+      {token && <p>Token: {token.substring(0, 20)}...</p>}
+    </div>
+  );
+}
+```
+
+### Validation on Component Mount
+
+```tsx
+import { useEffect, useCallback, useState } from 'react';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+function AutoVerifyComponent() {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+  const [verified, setVerified] = useState(false);
+
+  const handleVerify = useCallback(async () => {
+    if (!executeRecaptcha) {
+      return;
+    }
+
+    const token = await executeRecaptcha('page_view');
+    
+    // Verify on backend
+    const response = await fetch('/api/verify', {
+      method: 'POST',
+      body: JSON.stringify({ token })
+    });
+    
+    const data = await response.json();
+    setVerified(data.success);
+  }, [executeRecaptcha]);
+
+  useEffect(() => {
+    handleVerify();
+  }, [handleVerify]);
+
+  return (
+    <div>
+      {verified ? 'Verified!' : 'Verifying...'}
+    </div>
+  );
+}
+```
+
+### Multiple Actions with Different Contexts
+
+```tsx
+import { useCallback } from 'react';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+function MultiActionForm() {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+
+  const handleSaveDraft = useCallback(async () => {
+    if (!executeRecaptcha) return;
+    
+    const token = await executeRecaptcha('save_draft');
+    await fetch('/api/save-draft', {
+      method: 'POST',
+      body: JSON.stringify({ token, /* draft data */ })
+    });
+  }, [executeRecaptcha]);
+
+  const handlePublish = useCallback(async () => {
+    if (!executeRecaptcha) return;
+    
+    const token = await executeRecaptcha('publish');
+    await fetch('/api/publish', {
+      method: 'POST',
+      body: JSON.stringify({ token, /* publish data */ })
+    });
+  }, [executeRecaptcha]);
+
+  const handleDelete = useCallback(async () => {
+    if (!executeRecaptcha) return;
+    
+    const token = await executeRecaptcha('delete');
+    await fetch('/api/delete', {
+      method: 'DELETE',
+      body: JSON.stringify({ token })
+    });
+  }, [executeRecaptcha]);
+
+  return (
+    <div>
+      <button onClick={handleSaveDraft}>Save Draft</button>
+      <button onClick={handlePublish}>Publish</button>
+      <button onClick={handleDelete}>Delete</button>
+    </div>
+  );
+}
+```
+
+### With Loading and Error States
+
+```tsx
+import { useCallback, useState } from 'react';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+function RobustForm() {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>('');
+
+  const handleSubmit = useCallback(async () => {
+    if (!executeRecaptcha) {
+      setError('ReCAPTCHA not loaded yet');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const token = await executeRecaptcha('submit_form');
+      
+      const response = await fetch('/api/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+
+      if (!response.ok) {
+        throw new Error('Verification failed');
+      }
+
+      const data = await response.json();
+      
+      if (data.score < 0.5) {
+        setError('Verification score too low. Please try again.');
+        return;
+      }
+
+      console.log('Success!');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  }, [executeRecaptcha]);
+
+  return (
+    <div>
+      <button onClick={handleSubmit} disabled={loading || !executeRecaptcha}>
+        {loading ? 'Processing...' : 'Submit'}
+      </button>
+      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {!executeRecaptcha && <p>Loading reCAPTCHA...</p>}
+    </div>
+  );
+}
+```
+
+### Dynamic Action Names
+
+```tsx
+import { useCallback, useState } from 'react';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+function DynamicActionExample() {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+  const [action, setAction] = useState('homepage');
+  const [token, setToken] = useState('');
+
+  const handleExecute = useCallback(async () => {
+    if (!executeRecaptcha) return;
+    
+    const result = await executeRecaptcha(action);
+    setToken(result);
+  }, [executeRecaptcha, action]);
+
+  return (
+    <div>
+      <select value={action} onChange={(e) => setAction(e.target.value)}>
+        <option value="homepage">Homepage</option>
+        <option value="login">Login</option>
+        <option value="signup">Signup</option>
+        <option value="checkout">Checkout</option>
+      </select>
+      <button onClick={handleExecute}>Execute</button>
+      {token && <p>Token: {token.substring(0, 30)}...</p>}
+    </div>
+  );
+}
+```
+
+## Best Practices
+
+<Tip>
+  **Always Check for Undefined**: The `executeRecaptcha` function will be `undefined` until the reCAPTCHA script loads. Always check before calling:
+  
+  ```tsx
+  if (!executeRecaptcha) {
+    console.log('Not ready yet');
+    return;
+  }
+  ```
+</Tip>
+
+<Tip>
+  **Use Meaningful Action Names**: Choose descriptive action names that represent the user action being protected:
+  - `"login"`, `"signup"`, `"purchase"`
+  - `"submit_comment"`, `"send_message"`
+  - `"reset_password"`, `"change_email"`
+</Tip>
+
+<Tip>
+  **Wrap in useCallback**: When using `executeRecaptcha` in event handlers or effects, wrap your functions with `useCallback` to prevent unnecessary re-renders:
+  
+  ```tsx
+  const handleSubmit = useCallback(async () => {
+    // ...
+  }, [executeRecaptcha]);
+  ```
+</Tip>
+
+<Warning>
+  **Verify on Server**: Never trust the token on the client side alone. Always send it to your backend server and verify it using Google's siteverify API.
+</Warning>
+
+<Warning>
+  **Token Expiration**: reCAPTCHA tokens expire after a few minutes. Generate them right before you need them, not ahead of time.
+</Warning>
+
+<Tip>
+  **Error Handling**: Always wrap `executeRecaptcha` calls in try-catch blocks to handle potential errors gracefully.
+</Tip>
+
+## Common Patterns
+
+### Disable Submit Button Until Ready
+
+```tsx
+function Form() {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+  
+  return (
+    <button disabled={!executeRecaptcha} type="submit">
+      Submit
+    </button>
+  );
+}
+```
+
+### Show Loading State
+
+```tsx
+function Form() {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+  
+  if (!executeRecaptcha) {
+    return <div>Loading reCAPTCHA...</div>;
+  }
+  
+  return <form>{/* form content */}</form>;
+}
+```
+
+### Execute Without Action
+
+```tsx
+// Action is optional
+const token = await executeRecaptcha();
+// or with action
+const token = await executeRecaptcha('my_action');
+```
+
+## TypeScript Types
+
+```typescript
+interface IGoogleReCaptchaConsumerProps {
+  executeRecaptcha?: (action?: string) => Promise<string>;
+  container?: string | HTMLElement;
+}
+
+const useGoogleReCaptcha: () => IGoogleReCaptchaConsumerProps;
+```
+
+## When to Use This Hook
+
+**Use `useGoogleReCaptcha` when:**
+- You need manual control over validation timing (recommended)
+- You want to trigger validation on button clicks or form submissions
+- You need to execute validation multiple times
+- You're using functional components (most modern React)
+
+**Use [GoogleReCaptcha component](/components/google-recaptcha) when:**
+- You want automatic validation on mount
+- You prefer a declarative API
+- Validation should happen based on prop changes
+
+**Use [withGoogleReCaptcha HOC](/components/with-google-recaptcha) when:**
+- You're working with class components
+- You can't use hooks
+
+## Implementation Details
+
+Under the hood, `useGoogleReCaptcha` is a simple wrapper around React's `useContext` hook:
+
+```typescript
+// From source: src/use-google-recaptcha.tsx:1
+import { useContext } from 'react';
+import { GoogleReCaptchaContext } from './google-recaptcha-provider';
+
+export const useGoogleReCaptcha = () => useContext(GoogleReCaptchaContext);
+```
+
+It provides access to the context created by `GoogleReCaptchaProvider`, which includes the `executeRecaptcha` function that calls Google's reCAPTCHA API.
+
+## See Also
+
+- [GoogleReCaptchaProvider](/components/provider) - Required wrapper component
+- [GoogleReCaptcha Component](/components/google-recaptcha) - Declarative component alternative
+- [withGoogleReCaptcha HOC](/components/with-google-recaptcha) - HOC for class components

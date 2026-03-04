@@ -1,0 +1,479 @@
+---
+title: TypeScript Interfaces
+description: Complete TypeScript type definitions for react-google-recaptcha-v3
+---
+
+## Overview
+
+This page documents all TypeScript interfaces, types, and enums exported by react-google-recaptcha-v3.
+
+## Provider Interfaces
+
+### IGoogleReCaptchaProviderProps
+
+Props for the `GoogleReCaptchaProvider` component.
+
+**Source:** `src/google-recaptcha-provider.tsx:20`
+
+```typescript
+interface IGoogleReCaptchaProviderProps {
+  reCaptchaKey: string;
+  language?: string;
+  useRecaptchaNet?: boolean;
+  useEnterprise?: boolean;
+  scriptProps?: {
+    nonce?: string;
+    defer?: boolean;
+    async?: boolean;
+    appendTo?: 'head' | 'body';
+    id?: string;
+    onLoadCallbackName?: string;
+  };
+  container?: {
+    element?: string | HTMLElement;
+    parameters: {
+      badge?: 'inline' | 'bottomleft' | 'bottomright';
+      theme?: 'dark' | 'light';
+      tabindex?: number;
+      callback?: () => void;
+      expiredCallback?: () => void;
+      errorCallback?: () => void;
+    }
+  };
+  children: ReactNode;
+}
+```
+
+<ParamField path="reCaptchaKey" type="string" required>
+  Google reCAPTCHA v3 site key
+</ParamField>
+
+<ParamField path="language" type="string">
+  Language code (e.g., "en", "fr", "es")
+</ParamField>
+
+<ParamField path="useRecaptchaNet" type="boolean">
+  Use recaptcha.net domain instead of google.com
+</ParamField>
+
+<ParamField path="useEnterprise" type="boolean">
+  Use Google reCAPTCHA Enterprise
+</ParamField>
+
+<ParamField path="scriptProps" type="object">
+  Script tag configuration options
+</ParamField>
+
+<ParamField path="container" type="object">
+  Explicit rendering container configuration
+</ParamField>
+
+<ParamField path="children" type="ReactNode" required>
+  Child components
+</ParamField>
+
+### IGoogleReCaptchaConsumerProps
+
+Context value provided by `GoogleReCaptchaProvider` and consumed by hooks/HOCs.
+
+**Source:** `src/google-recaptcha-provider.tsx:47`
+
+```typescript
+interface IGoogleReCaptchaConsumerProps {
+  executeRecaptcha?: (action?: string) => Promise<string>;
+  container?: string | HTMLElement;
+}
+```
+
+<ResponseField name="executeRecaptcha" type="(action?: string) => Promise<string> | undefined">
+  Function to execute reCAPTCHA and get a token. Undefined until loaded.
+</ResponseField>
+
+<ResponseField name="container" type="string | HTMLElement | undefined">
+  Container element for explicit rendering
+</ResponseField>
+
+## Component Interfaces
+
+### IGoogleRecaptchaProps
+
+Props for the `GoogleReCaptcha` component.
+
+**Source:** `src/google-recaptcha.tsx:5`
+
+```typescript
+interface IGoogleRecaptchaProps {
+  onVerify: (token: string) => void | Promise<void>;
+  action?: string;
+  refreshReCaptcha?: boolean | string | number | null;
+}
+```
+
+<ParamField path="onVerify" type="(token: string) => void | Promise<void>" required>
+  Callback that receives the reCAPTCHA token
+</ParamField>
+
+<ParamField path="action" type="string">
+  Action name for this verification
+</ParamField>
+
+<ParamField path="refreshReCaptcha" type="boolean | string | number | null">
+  Trigger to refresh and re-execute reCAPTCHA
+</ParamField>
+
+## HOC Interfaces
+
+### IWithGoogleReCaptchaProps
+
+Props injected by the `withGoogleReCaptcha` HOC.
+
+**Source:** `src/with-google-recaptcha.tsx:9`
+
+```typescript
+interface IWithGoogleReCaptchaProps {
+  googleReCaptchaProps: IGoogleReCaptchaConsumerProps;
+}
+```
+
+<ParamField path="googleReCaptchaProps" type="IGoogleReCaptchaConsumerProps" required>
+  Object containing executeRecaptcha function and container info
+</ParamField>
+
+## Usage Examples
+
+### Typing Provider Props
+
+```typescript
+import { GoogleReCaptchaProvider, IGoogleReCaptchaProviderProps } from 'react-google-recaptcha-v3';
+
+const providerProps: IGoogleReCaptchaProviderProps = {
+  reCaptchaKey: 'YOUR_SITE_KEY',
+  language: 'en',
+  useRecaptchaNet: false,
+  useEnterprise: false,
+  scriptProps: {
+    async: true,
+    defer: true,
+    appendTo: 'head',
+    nonce: 'random-nonce'
+  },
+  children: <div>My App</div>
+};
+
+function App() {
+  return <GoogleReCaptchaProvider {...providerProps} />;
+}
+```
+
+### Typing Hook Return Value
+
+```typescript
+import { useGoogleReCaptcha, IGoogleReCaptchaConsumerProps } from 'react-google-recaptcha-v3';
+
+function MyComponent() {
+  const recaptcha: IGoogleReCaptchaConsumerProps = useGoogleReCaptcha();
+  
+  const handleAction = async () => {
+    if (!recaptcha.executeRecaptcha) {
+      console.log('Not ready');
+      return;
+    }
+    
+    const token: string = await recaptcha.executeRecaptcha('my_action');
+    console.log(token);
+  };
+  
+  return <button onClick={handleAction}>Click me</button>;
+}
+```
+
+### Typing Component Props
+
+```typescript
+import { GoogleReCaptcha, IGoogleRecaptchaProps } from 'react-google-recaptcha-v3';
+
+const componentProps: IGoogleRecaptchaProps = {
+  onVerify: (token: string) => {
+    console.log('Token:', token);
+  },
+  action: 'page_load',
+  refreshReCaptcha: true
+};
+
+function App() {
+  return <GoogleReCaptcha {...componentProps} />;
+}
+```
+
+### Typing HOC-Wrapped Components
+
+```typescript
+import React, { Component } from 'react';
+import {
+  withGoogleReCaptcha,
+  IWithGoogleReCaptchaProps
+} from 'react-google-recaptcha-v3';
+
+interface OwnProps {
+  userId: string;
+  userName: string;
+}
+
+// Combine your props with the HOC props
+type Props = OwnProps & IWithGoogleReCaptchaProps;
+
+class UserProfile extends Component<Props> {
+  handleSubmit = async () => {
+    const { executeRecaptcha } = this.props.googleReCaptchaProps;
+    
+    if (!executeRecaptcha) return;
+    
+    const token: string = await executeRecaptcha('profile_update');
+    console.log('Token for user', this.props.userId, ':', token);
+  };
+  
+  render() {
+    return (
+      <div>
+        <h1>{this.props.userName}</h1>
+        <button onClick={this.handleSubmit}>Update</button>
+      </div>
+    );
+  }
+}
+
+export default withGoogleReCaptcha(UserProfile);
+```
+
+### Typing Custom Hooks
+
+```typescript
+import { useCallback } from 'react';
+import {
+  useGoogleReCaptcha,
+  IGoogleReCaptchaConsumerProps
+} from 'react-google-recaptcha-v3';
+
+interface VerificationResult {
+  success: boolean;
+  score: number;
+  action: string;
+}
+
+interface UseRecaptchaVerify {
+  verify: (action: string) => Promise<VerificationResult>;
+  isReady: boolean;
+}
+
+function useRecaptchaVerify(): UseRecaptchaVerify {
+  const { executeRecaptcha }: IGoogleReCaptchaConsumerProps = useGoogleReCaptcha();
+  
+  const verify = useCallback(
+    async (action: string): Promise<VerificationResult> => {
+      if (!executeRecaptcha) {
+        throw new Error('reCAPTCHA not ready');
+      }
+      
+      const token: string = await executeRecaptcha(action);
+      
+      const response = await fetch('/api/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, action })
+      });
+      
+      return response.json() as Promise<VerificationResult>;
+    },
+    [executeRecaptcha]
+  );
+  
+  return {
+    verify,
+    isReady: !!executeRecaptcha
+  };
+}
+```
+
+### Typing Callback Functions
+
+```typescript
+import { IGoogleRecaptchaProps } from 'react-google-recaptcha-v3';
+
+// Synchronous callback
+const handleVerifySync: IGoogleRecaptchaProps['onVerify'] = (token) => {
+  console.log('Token:', token);
+};
+
+// Asynchronous callback
+const handleVerifyAsync: IGoogleRecaptchaProps['onVerify'] = async (token) => {
+  await fetch('/api/verify', {
+    method: 'POST',
+    body: JSON.stringify({ token })
+  });
+};
+```
+
+### Typing Container Configuration
+
+```typescript
+import { IGoogleReCaptchaProviderProps } from 'react-google-recaptcha-v3';
+
+type ContainerConfig = IGoogleReCaptchaProviderProps['container'];
+
+const containerConfig: ContainerConfig = {
+  element: 'recaptcha-badge',
+  parameters: {
+    badge: 'inline',
+    theme: 'dark',
+    tabindex: 0,
+    callback: () => console.log('Success'),
+    expiredCallback: () => console.log('Expired'),
+    errorCallback: () => console.log('Error')
+  }
+};
+```
+
+### Typing Script Props
+
+```typescript
+import { IGoogleReCaptchaProviderProps } from 'react-google-recaptcha-v3';
+
+type ScriptProps = IGoogleReCaptchaProviderProps['scriptProps'];
+
+const scriptConfig: ScriptProps = {
+  nonce: 'abc123',
+  defer: true,
+  async: true,
+  appendTo: 'body',
+  id: 'my-recaptcha-script',
+  onLoadCallbackName: 'myCustomCallback'
+};
+```
+
+## Utility Types
+
+You can create custom utility types based on the exported interfaces:
+
+```typescript
+import {
+  IGoogleReCaptchaConsumerProps,
+  IGoogleRecaptchaProps
+} from 'react-google-recaptcha-v3';
+
+// Extract the executeRecaptcha function type
+type ExecuteRecaptcha = NonNullable<IGoogleReCaptchaConsumerProps['executeRecaptcha']>;
+
+// Extract the onVerify callback type
+type VerifyCallback = IGoogleRecaptchaProps['onVerify'];
+
+// Create a type for async verify functions
+type AsyncVerifyCallback = (token: string) => Promise<void>;
+
+// Type guard for checking if executeRecaptcha is available
+function hasExecuteRecaptcha(
+  props: IGoogleReCaptchaConsumerProps
+): props is IGoogleReCaptchaConsumerProps & { executeRecaptcha: ExecuteRecaptcha } {
+  return props.executeRecaptcha !== undefined;
+}
+```
+
+## Generic Type Parameters
+
+### withGoogleReCaptcha with Custom Props
+
+```typescript
+import { ComponentType } from 'react';
+import { withGoogleReCaptcha, IWithGoogleReCaptchaProps } from 'react-google-recaptcha-v3';
+
+interface MyComponentProps {
+  title: string;
+  count: number;
+}
+
+const MyComponent: ComponentType<MyComponentProps & Partial<IWithGoogleReCaptchaProps>> = ({
+  title,
+  count,
+  googleReCaptchaProps
+}) => {
+  return (
+    <div>
+      <h1>{title}</h1>
+      <p>Count: {count}</p>
+      <p>reCAPTCHA ready: {googleReCaptchaProps?.executeRecaptcha ? 'Yes' : 'No'}</p>
+    </div>
+  );
+};
+
+const WrappedComponent = withGoogleReCaptcha(MyComponent);
+
+// Usage maintains original props
+<WrappedComponent title="Hello" count={42} />
+```
+
+## Internal Types (Not Exported)
+
+These types are used internally but not exported. They're documented here for completeness:
+
+### GoogleRecaptchaError
+
+**Source:** `src/google-recaptcha-provider.tsx:16`
+
+```typescript
+enum GoogleRecaptchaError {
+  SCRIPT_NOT_AVAILABLE = 'Recaptcha script is not available'
+}
+```
+
+### IInjectGoogleReCaptchaScriptParams
+
+**Source:** `src/utils.ts:1`
+
+```typescript
+interface IInjectGoogleReCaptchaScriptParams {
+  render: string;
+  onLoadCallbackName: string;
+  useRecaptchaNet: boolean;
+  useEnterprise: boolean;
+  onLoad: () => void;
+  onError: () => void;
+  language?: string;
+  scriptProps?: {
+    nonce?: string;
+    defer?: boolean;
+    async?: boolean;
+    appendTo?: 'head' | 'body';
+    id?: string;
+  };
+}
+```
+
+## Type Compatibility
+
+All interfaces are compatible with React 16.8+ and TypeScript 3.7+.
+
+### React Types
+
+```typescript
+import { ReactNode } from 'react';
+
+// IGoogleReCaptchaProviderProps uses ReactNode for children
+const children: ReactNode = <div>Hello</div>;
+```
+
+### Promise Types
+
+```typescript
+// executeRecaptcha returns a Promise<string>
+const token: Promise<string> = executeRecaptcha('action');
+
+// onVerify can return void or Promise<void>
+const callback1: (token: string) => void = (token) => {};
+const callback2: (token: string) => Promise<void> = async (token) => {};
+```
+
+## Related APIs
+
+- [GoogleReCaptchaProvider](/api/google-recaptcha-provider) - Provider component
+- [GoogleReCaptcha](/api/google-recaptcha) - Automatic verification component
+- [useGoogleReCaptcha](/api/use-google-recaptcha-hook) - Hook for functional components
+- [withGoogleReCaptcha](/api/with-google-recaptcha-hoc) - HOC for class components

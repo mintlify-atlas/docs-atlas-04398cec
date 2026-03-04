@@ -1,80 +1,309 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: 'Quickstart'
+description: 'Get up and running with reCAPTCHA v3 in your React app in under 5 minutes'
+icon: 'rocket'
 ---
 
-## Get started in three steps
+## Get Your First reCAPTCHA Working
 
-Get your documentation site running locally and make your first customization.
+This quickstart guide will get you from zero to a working reCAPTCHA v3 integration in just a few minutes. We'll use the recommended `useGoogleReCaptcha` hook approach.
 
-### Step 1: Set up your local environment
+<Steps>
+  <Step title="Install the package">
+    Install react-google-recaptcha-v3 using your preferred package manager:
+
+    <CodeGroup>
+    ```bash npm
+    npm install react-google-recaptcha-v3
+    ```
+
+    ```bash yarn
+    yarn add react-google-recaptcha-v3
+    ```
+
+    ```bash pnpm
+    pnpm add react-google-recaptcha-v3
+    ```
+    </CodeGroup>
+
+    <Note>
+      This library requires React 16.3 or higher. Check your `package.json` to ensure compatibility.
+    </Note>
+  </Step>
+
+  <Step title="Get your reCAPTCHA site key">
+    1. Visit the [Google reCAPTCHA admin console](https://www.google.com/recaptcha/admin)
+    2. Click the **+** button to register a new site
+    3. Enter a label for your site (e.g., "My React App")
+    4. Select **reCAPTCHA v3** as the type
+    5. Add your domain(s) - use `localhost` for development
+    6. Accept the terms of service
+    7. Click **Submit**
+    8. Copy your **Site Key** (you'll need this in the next step)
+
+    <Warning>
+      Make sure you select **reCAPTCHA v3**, not v2. The two versions are not compatible.
+    </Warning>
+  </Step>
+
+  <Step title="Add the provider to your app">
+    Wrap your application with `GoogleReCaptchaProvider` at the root level. This loads the reCAPTCHA script and provides access to the verification function throughout your app.
+
+    ```tsx App.tsx
+    import React from 'react';
+    import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+    import LoginForm from './LoginForm';
+
+    function App() {
+      return (
+        <GoogleReCaptchaProvider reCaptchaKey="YOUR_RECAPTCHA_SITE_KEY">
+          <div className="app">
+            <h1>My Application</h1>
+            <LoginForm />
+          </div>
+        </GoogleReCaptchaProvider>
+      );
+    }
+
+    export default App;
+    ```
+
+    <Tip>
+      Store your site key in an environment variable (e.g., `REACT_APP_RECAPTCHA_SITE_KEY` or `VITE_RECAPTCHA_SITE_KEY`) rather than hardcoding it.
+    </Tip>
+  </Step>
+
+  <Step title="Execute reCAPTCHA on user actions">
+    Use the `useGoogleReCaptcha` hook to verify user actions. Here's a complete login form example:
+
+    ```tsx LoginForm.tsx
+    import React, { useState, useCallback } from 'react';
+    import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+    function LoginForm() {
+      const { executeRecaptcha } = useGoogleReCaptcha();
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      const [loading, setLoading] = useState(false);
+      const [message, setMessage] = useState('');
+
+      const handleSubmit = useCallback(async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        // Check if executeRecaptcha is available
+        if (!executeRecaptcha) {
+          setMessage('reCAPTCHA not yet loaded');
+          return;
+        }
+
+        setLoading(true);
+        setMessage('');
+
+        try {
+          // Execute reCAPTCHA with action name 'login'
+          const token = await executeRecaptcha('login');
+          
+          // Send token to your backend for verification
+          const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email,
+              password,
+              recaptchaToken: token
+            })
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            setMessage('Login successful!');
+            // Redirect or update app state
+          } else {
+            setMessage(data.error || 'Login failed');
+          }
+        } catch (error) {
+          setMessage('An error occurred. Please try again.');
+          console.error('Login error:', error);
+        } finally {
+          setLoading(false);
+        }
+      }, [executeRecaptcha, email, password]);
+
+      return (
+        <form onSubmit={handleSubmit}>
+          <div>
+            <label htmlFor="email">Email:</label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="password">Password:</label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+
+          <button type="submit" disabled={loading}>
+            {loading ? 'Logging in...' : 'Log In'}
+          </button>
+
+          {message && <p>{message}</p>}
+        </form>
+      );
+    }
+
+    export default LoginForm;
+    ```
+
+    <Note>
+      The **action** parameter (e.g., `'login'`) helps you understand which actions generated which scores in the reCAPTCHA admin console analytics.
+    </Note>
+  </Step>
+
+  <Step title="Verify the token on your backend">
+    **Critical:** Always verify reCAPTCHA tokens on your backend. Here's an example using Node.js/Express:
+
+    ```javascript server.js
+    const express = require('express');
+    const fetch = require('node-fetch');
+
+    const app = express();
+    app.use(express.json());
+
+    const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
+
+    app.post('/api/login', async (req, res) => {
+      const { email, password, recaptchaToken } = req.body;
+
+      // Verify reCAPTCHA token with Google
+      const verifyUrl = `https://www.google.com/recaptcha/api/siteverify`;
+      const verifyResponse = await fetch(verifyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `secret=${RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`
+      });
+
+      const verifyData = await verifyResponse.json();
+
+      // Check if verification was successful
+      if (!verifyData.success) {
+        return res.status(400).json({ error: 'reCAPTCHA verification failed' });
+      }
+
+      // Check the score (0.0 to 1.0, higher is better)
+      if (verifyData.score < 0.5) {
+        return res.status(400).json({ 
+          error: 'Suspicious activity detected',
+          score: verifyData.score 
+        });
+      }
+
+      // Proceed with login logic
+      // ... authenticate user with email/password ...
+
+      res.json({ success: true, message: 'Login successful' });
+    });
+
+    app.listen(3000, () => console.log('Server running on port 3000'));
+    ```
+
+    <Warning>
+      **Never expose your reCAPTCHA secret key in client-side code!** Store it securely in environment variables on your server.
+    </Warning>
+  </Step>
+</Steps>
+
+## Test Your Integration
+
+After completing the steps above, test your integration:
+
+1. **Open your app** in a browser and navigate to your login form
+2. **Fill out the form** and click submit
+3. **Check the network tab** in your browser's developer tools - you should see a request to `recaptcha/api.js`
+4. **Verify your backend** receives and validates the token
+5. **Visit the [reCAPTCHA admin console](https://www.google.com/recaptcha/admin)** to view analytics and scores
+
+<Tip>
+  During development, you may see lower scores. reCAPTCHA learns over time and considers factors like browsing history and mouse movements.
+</Tip>
+
+## Understanding Scores
+
+reCAPTCHA v3 returns a score between 0.0 and 1.0:
+
+- **1.0** - Very likely a legitimate user
+- **0.5** - Neutral (recommended threshold)
+- **0.0** - Very likely a bot
+
+You can adjust the threshold based on your needs. For example:
+- **0.7+** for high-security actions (password changes, payments)
+- **0.5+** for medium-security actions (login, contact forms)
+- **0.3+** for low-risk actions (newsletter signup)
+
+## Common Pitfalls
 
 <AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
+  <Accordion title="executeRecaptcha is undefined">
+    This happens when the reCAPTCHA script hasn't loaded yet. Always check if `executeRecaptcha` is available before calling it:
+
+    ```tsx
+    if (!executeRecaptcha) {
+      console.log('Execute recaptcha not yet available');
+      return;
+    }
+    ```
   </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
+
+  <Accordion title="Infinite loop with inline functions">
+    Using inline functions for callbacks can cause infinite renders. Use `useCallback`:
+
+    ```tsx
+    // ❌ Bad - inline function
+    const handleVerify = async (token) => { ... };
+
+    // ✅ Good - memoized with useCallback
+    const handleVerify = useCallback(async (token) => { ... }, [dependencies]);
+    ```
+  </Accordion>
+
+  <Accordion title="Wrong reCAPTCHA version">
+    Make sure you're using a **v3 site key**, not v2. They are not interchangeable. Check your key in the reCAPTCHA admin console.
   </Accordion>
 </AccordionGroup>
 
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
+## Next Steps
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Components" icon="puzzle-piece" href="/components/provider">
+    Learn about all available components and their props
+  </Card>
+  
+  <Card title="Guides" icon="book" href="/guides/enterprise">
+    Explore advanced features like Enterprise and custom containers
+  </Card>
+  
+  <Card title="Examples" icon="code" href="/examples/basic-usage">
+    Browse more real-world usage examples
+  </Card>
+  
+  <Card title="API Reference" icon="terminal" href="/api/google-recaptcha-provider">
+    Dive into the complete API documentation
+  </Card>
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+## Need Help?
+
+- View the [GitHub repository](https://github.com/t49tran/react-google-recaptcha-v3)
+- Check out [reCAPTCHA v3 documentation](https://developers.google.com/recaptcha/docs/v3)
+- Report issues on [GitHub Issues](https://github.com/t49tran/react-google-recaptcha-v3/issues)

@@ -1,0 +1,358 @@
+---
+title: 'Basic Usage'
+description: 'Learn how to integrate reCAPTCHA v3 into your React application with simple examples'
+icon: 'play'
+---
+
+## Overview
+
+This guide demonstrates the basic usage of react-google-recaptcha-v3 using the `useGoogleReCaptcha` hook, which is the recommended approach for most applications.
+
+## Simple Button Click Verification
+
+The most basic use case is verifying a user action when they click a button:
+
+```jsx App.jsx
+import React from 'react';
+import ReactDOM from 'react-dom';
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+import { VerifyButton } from './VerifyButton';
+
+function App() {
+  return (
+    <GoogleReCaptchaProvider reCaptchaKey="YOUR_RECAPTCHA_SITE_KEY">
+      <div className="app">
+        <h1>My Application</h1>
+        <VerifyButton />
+      </div>
+    </GoogleReCaptchaProvider>
+  );
+}
+
+ReactDOM.render(<App />, document.getElementById('root'));
+```
+
+```jsx VerifyButton.jsx
+import React, { useCallback, useState } from 'react';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+export function VerifyButton() {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+  const [token, setToken] = useState('');
+  const [isVerified, setIsVerified] = useState(false);
+
+  const handleVerify = useCallback(async () => {
+    if (!executeRecaptcha) {
+      console.log('Execute recaptcha not yet available');
+      return;
+    }
+
+    // Execute reCAPTCHA with action name 'verify_button'
+    const token = await executeRecaptcha('verify_button');
+    setToken(token);
+    setIsVerified(true);
+
+    // Send token to your backend for verification
+    // await verifyTokenOnBackend(token);
+  }, [executeRecaptcha]);
+
+  return (
+    <div>
+      <button onClick={handleVerify}>Verify I'm Human</button>
+      {isVerified && (
+        <div>
+          <p>✓ Verification successful!</p>
+          <p>Token: {token.substring(0, 20)}...</p>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+<Note>
+  Always check if `executeRecaptcha` is available before calling it. The function will be `undefined` until the reCAPTCHA script has fully loaded.
+</Note>
+
+## Automatic Verification on Component Mount
+
+You can automatically verify users when a component loads using `useEffect`:
+
+```jsx AutoVerify.jsx
+import React, { useEffect, useCallback, useState } from 'react';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+export function AutoVerify() {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+  const [verificationStatus, setVerificationStatus] = useState('pending');
+
+  const handleReCaptchaVerify = useCallback(async () => {
+    if (!executeRecaptcha) {
+      return;
+    }
+
+    try {
+      // Execute reCAPTCHA with action name 'page_view'
+      const token = await executeRecaptcha('page_view');
+      
+      // Send token to your backend
+      const response = await fetch('/api/verify-recaptcha', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success && data.score > 0.5) {
+        setVerificationStatus('verified');
+      } else {
+        setVerificationStatus('suspicious');
+      }
+    } catch (error) {
+      console.error('Verification error:', error);
+      setVerificationStatus('error');
+    }
+  }, [executeRecaptcha]);
+
+  // Automatically verify when component mounts
+  useEffect(() => {
+    handleReCaptchaVerify();
+  }, [handleReCaptchaVerify]);
+
+  return (
+    <div>
+      <h2>Protected Content</h2>
+      {verificationStatus === 'pending' && <p>Verifying...</p>}
+      {verificationStatus === 'verified' && <p>Welcome! You've been verified.</p>}
+      {verificationStatus === 'suspicious' && <p>Additional verification required.</p>}
+      {verificationStatus === 'error' && <p>Verification failed. Please try again.</p>}
+    </div>
+  );
+}
+```
+
+<Tip>
+  Use descriptive action names like `page_view`, `login`, `submit_form` to help you analyze user behavior in the reCAPTCHA admin console.
+</Tip>
+
+## Dynamic Action Names
+
+You can dynamically change the action name based on user interactions:
+
+```jsx DynamicAction.jsx
+import React, { useState, useCallback } from 'react';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+export function DynamicAction() {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+  const [currentAction, setCurrentAction] = useState('homepage');
+  const [actionInput, setActionInput] = useState('');
+  const [token, setToken] = useState('');
+  const [verificationCount, setVerificationCount] = useState(0);
+
+  const handleVerify = useCallback(async () => {
+    if (!executeRecaptcha) {
+      return;
+    }
+
+    // Execute with the current action
+    const result = await executeRecaptcha(currentAction);
+    setToken(result);
+    setVerificationCount(prev => prev + 1);
+  }, [currentAction, executeRecaptcha]);
+
+  const handleChangeAction = useCallback(() => {
+    if (actionInput.trim()) {
+      setCurrentAction(actionInput);
+      setActionInput('');
+    }
+  }, [actionInput]);
+
+  return (
+    <div>
+      <div>
+        <h3>Current Action: {currentAction}</h3>
+        <input
+          type="text"
+          value={actionInput}
+          onChange={(e) => setActionInput(e.target.value)}
+          placeholder="Enter new action name"
+        />
+        <button onClick={handleChangeAction}>Update Action</button>
+      </div>
+      
+      <div style={{ marginTop: '20px' }}>
+        <button onClick={handleVerify}>Run Verification</button>
+      </div>
+      
+      {token && (
+        <div style={{ marginTop: '20px' }}>
+          <p>Token: {token.substring(0, 30)}...</p>
+          <p>Verifications performed: {verificationCount}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+## Multiple Verification Points
+
+You can use reCAPTCHA at multiple points in your application:
+
+<CodeGroup>
+
+```jsx App.jsx
+import React from 'react';
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+import { Header } from './Header';
+import { LoginForm } from './LoginForm';
+import { ContactForm } from './ContactForm';
+import { Footer } from './Footer';
+
+function App() {
+  return (
+    <GoogleReCaptchaProvider reCaptchaKey="YOUR_RECAPTCHA_SITE_KEY">
+      <div className="app">
+        <Header />
+        <main>
+          <LoginForm />
+          <ContactForm />
+        </main>
+        <Footer />
+      </div>
+    </GoogleReCaptchaProvider>
+  );
+}
+
+export default App;
+```
+
+```jsx LoginForm.jsx
+import React, { useCallback } from 'react';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+export function LoginForm() {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+
+  const handleLogin = useCallback(async (event) => {
+    event.preventDefault();
+    
+    if (!executeRecaptcha) {
+      return;
+    }
+
+    // Get reCAPTCHA token with 'login' action
+    const token = await executeRecaptcha('login');
+    
+    // Submit with token
+    // ... handle login
+  }, [executeRecaptcha]);
+
+  return (
+    <form onSubmit={handleLogin}>
+      <input type="email" placeholder="Email" required />
+      <input type="password" placeholder="Password" required />
+      <button type="submit">Log In</button>
+    </form>
+  );
+}
+```
+
+```jsx ContactForm.jsx
+import React, { useCallback } from 'react';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+export function ContactForm() {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+
+  const handleSubmit = useCallback(async (event) => {
+    event.preventDefault();
+    
+    if (!executeRecaptcha) {
+      return;
+    }
+
+    // Get reCAPTCHA token with 'contact_form' action
+    const token = await executeRecaptcha('contact_form');
+    
+    // Submit with token
+    // ... handle contact form submission
+  }, [executeRecaptcha]);
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input type="text" placeholder="Name" required />
+      <textarea placeholder="Message" required />
+      <button type="submit">Send Message</button>
+    </form>
+  );
+}
+```
+
+</CodeGroup>
+
+<Tip>
+  Place the `GoogleReCaptchaProvider` as high as possible in your component tree. You only need one provider for your entire application.
+</Tip>
+
+## Backend Verification
+
+After getting the token from the client, you must verify it on your backend:
+
+```javascript Backend Example (Node.js)
+const axios = require('axios');
+
+async function verifyRecaptchaToken(token) {
+  const secretKey = process.env.RECAPTCHA_SECRET_KEY;
+  
+  try {
+    const response = await axios.post(
+      'https://www.google.com/recaptcha/api/siteverify',
+      null,
+      {
+        params: {
+          secret: secretKey,
+          response: token
+        }
+      }
+    );
+    
+    const { success, score, action } = response.data;
+    
+    // Check if verification was successful and score is acceptable
+    // Score ranges from 0.0 (likely bot) to 1.0 (likely human)
+    if (success && score >= 0.5) {
+      return { verified: true, score, action };
+    }
+    
+    return { verified: false, score, action };
+  } catch (error) {
+    console.error('reCAPTCHA verification error:', error);
+    return { verified: false, error: error.message };
+  }
+}
+
+// Express.js route example
+app.post('/api/verify-recaptcha', async (req, res) => {
+  const { token } = req.body;
+  
+  if (!token) {
+    return res.status(400).json({ error: 'Token is required' });
+  }
+  
+  const result = await verifyRecaptchaToken(token);
+  res.json(result);
+});
+```
+
+<Warning>
+  **Never expose your reCAPTCHA secret key in client-side code!** Always verify tokens on your backend server.
+</Warning>
+
+## Next Steps
+
+- Learn about [Form Validation](/examples/form-validation) with reCAPTCHA
+- Understand how to [Refresh reCAPTCHA Tokens](/examples/refresh-recaptcha)
+- Explore [Provider Configuration](/api/google-recaptcha-provider)

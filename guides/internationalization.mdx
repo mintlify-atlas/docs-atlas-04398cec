@@ -1,0 +1,585 @@
+---
+title: 'Internationalization (i18n)'
+description: 'Learn how to configure react-google-recaptcha-v3 to support multiple languages and locales'
+---
+
+## Overview
+
+Google reCAPTCHA supports multiple languages for the badge UI and challenge dialogs. The `language` prop allows you to specify which language reCAPTCHA should use, making your application accessible to users worldwide.
+
+## Quick Start
+
+Set the `language` prop on `GoogleReCaptchaProvider`:
+
+```jsx
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+
+function App() {
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey="YOUR_SITE_KEY"
+      language="es"  // Spanish
+    >
+      <YourApp />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+## How It Works
+
+When you provide a `language` prop, the library:
+
+1. Appends the `hl` (host language) parameter to the reCAPTCHA script URL
+2. Loads the script as: `https://www.google.com/recaptcha/api.js?render=KEY&hl=LANGUAGE`
+3. Google serves the appropriate language resources
+
+Source reference: `src/utils.ts:166-170`
+
+## Supported Languages
+
+Google reCAPTCHA supports 100+ languages and locales. Here are some common ones:
+
+<AccordionGroup>
+  <Accordion title="Western European Languages">
+    | Code | Language |
+    |------|----------|
+    | `en` | English |
+    | `es` | Spanish |
+    | `fr` | French |
+    | `de` | German |
+    | `it` | Italian |
+    | `pt` | Portuguese |
+    | `nl` | Dutch |
+    | `no` | Norwegian |
+    | `sv` | Swedish |
+    | `da` | Danish |
+    | `fi` | Finnish |
+  </Accordion>
+
+  <Accordion title="Eastern European Languages">
+    | Code | Language |
+    |------|----------|
+    | `ru` | Russian |
+    | `pl` | Polish |
+    | `uk` | Ukrainian |
+    | `cs` | Czech |
+    | `sk` | Slovak |
+    | `hu` | Hungarian |
+    | `ro` | Romanian |
+    | `bg` | Bulgarian |
+    | `hr` | Croatian |
+    | `sr` | Serbian |
+  </Accordion>
+
+  <Accordion title="Asian Languages">
+    | Code | Language |
+    |------|----------|
+    | `zh-CN` | Chinese (Simplified) |
+    | `zh-TW` | Chinese (Traditional) |
+    | `ja` | Japanese |
+    | `ko` | Korean |
+    | `th` | Thai |
+    | `vi` | Vietnamese |
+    | `id` | Indonesian |
+    | `ms` | Malay |
+    | `fil` | Filipino |
+    | `hi` | Hindi |
+  </Accordion>
+
+  <Accordion title="Middle Eastern Languages">
+    | Code | Language |
+    |------|----------|
+    | `ar` | Arabic |
+    | `he` | Hebrew |
+    | `fa` | Persian |
+    | `tr` | Turkish |
+    | `ur` | Urdu |
+  </Accordion>
+
+  <Accordion title="Other Languages">
+    | Code | Language |
+    |------|----------|
+    | `af` | Afrikaans |
+    | `am` | Amharic |
+    | `eu` | Basque |
+    | `ca` | Catalan |
+    | `et` | Estonian |
+    | `gl` | Galician |
+    | `sw` | Swahili |
+    | `zu` | Zulu |
+  </Accordion>
+</AccordionGroup>
+
+<Info>
+For the complete list of supported languages, see [Google's reCAPTCHA language documentation](https://developers.google.com/recaptcha/docs/language).
+</Info>
+
+## Implementation Patterns
+
+### Static Language
+
+Set a fixed language for your entire application:
+
+```jsx
+function App() {
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey="YOUR_SITE_KEY"
+      language="fr"  // Always French
+    >
+      <YourApp />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+### Dynamic Language from State
+
+Change the language based on user preferences:
+
+```jsx
+import { useState } from 'react';
+
+function App() {
+  const [language, setLanguage] = useState('en');
+
+  return (
+    <div>
+      <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+        <option value="en">English</option>
+        <option value="es">Español</option>
+        <option value="fr">Français</option>
+        <option value="de">Deutsch</option>
+        <option value="ja">日本語</option>
+      </select>
+
+      <GoogleReCaptchaProvider
+        reCaptchaKey="YOUR_SITE_KEY"
+        language={language}
+      >
+        <YourApp />
+      </GoogleReCaptchaProvider>
+    </div>
+  );
+}
+```
+
+<Warning>
+Changing the `language` prop will cause the reCAPTCHA script to reload, which may briefly interrupt the user experience. Consider setting the language once on initial load.
+</Warning>
+
+### Language from Browser Settings
+
+Automatically detect the user's browser language:
+
+```jsx
+import { useMemo } from 'react';
+
+function App() {
+  const browserLanguage = useMemo(() => {
+    // Get browser language (e.g., 'en-US', 'es-ES')
+    const fullLang = navigator.language || navigator.languages[0];
+    
+    // Extract base language code (e.g., 'en' from 'en-US')
+    return fullLang.split('-')[0];
+  }, []);
+
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey="YOUR_SITE_KEY"
+      language={browserLanguage}
+    >
+      <YourApp />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+### Language from i18n Library
+
+Integrate with popular i18n libraries:
+
+<CodeGroup>
+```jsx react-i18next
+import { useTranslation } from 'react-i18next';
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+
+function App() {
+  const { i18n } = useTranslation();
+
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey="YOUR_SITE_KEY"
+      language={i18n.language}
+    >
+      <YourApp />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+```jsx react-intl
+import { useIntl } from 'react-intl';
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+
+function App() {
+  const { locale } = useIntl();
+
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey="YOUR_SITE_KEY"
+      language={locale}
+    >
+      <YourApp />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+```jsx next-i18next (Next.js)
+import { useRouter } from 'next/router';
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+
+function MyApp({ Component, pageProps }) {
+  const router = useRouter();
+  const { locale } = router;
+
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey={process.env.NEXT_PUBLIC_RECAPTCHA_KEY}
+      language={locale}
+    >
+      <Component {...pageProps} />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+</CodeGroup>
+
+### Language with Fallback
+
+Provide a fallback language if the user's preferred language isn't supported:
+
+```jsx
+function App() {
+  const supportedLanguages = ['en', 'es', 'fr', 'de', 'ja', 'zh-CN'];
+  
+  const language = useMemo(() => {
+    const browserLang = navigator.language.split('-')[0];
+    
+    // Use browser language if supported, otherwise default to English
+    return supportedLanguages.includes(browserLang) ? browserLang : 'en';
+  }, []);
+
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey="YOUR_SITE_KEY"
+      language={language}
+    >
+      <YourApp />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+## Regional Variants
+
+Some languages have regional variants (e.g., Portuguese in Brazil vs Portugal):
+
+```jsx
+// Brazilian Portuguese
+<GoogleReCaptchaProvider
+  reCaptchaKey="YOUR_SITE_KEY"
+  language="pt-BR"
+>
+  <YourApp />
+</GoogleReCaptchaProvider>
+
+// European Portuguese  
+<GoogleReCaptchaProvider
+  reCaptchaKey="YOUR_SITE_KEY"
+  language="pt-PT"
+>
+  <YourApp />
+</GoogleReCaptchaProvider>
+```
+
+Common regional variants:
+- `en-GB` (British English) vs `en` (US English)
+- `zh-CN` (Simplified Chinese) vs `zh-TW` (Traditional Chinese)
+- `es-419` (Latin American Spanish) vs `es` (European Spanish)
+- `pt-BR` (Brazilian Portuguese) vs `pt-PT` (European Portuguese)
+- `fr-CA` (Canadian French) vs `fr` (European French)
+
+## Right-to-Left (RTL) Languages
+
+reCAPTCHA automatically handles RTL layout for languages like Arabic and Hebrew:
+
+```jsx
+function App() {
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey="YOUR_SITE_KEY"
+      language="ar"  // Arabic - automatically displays RTL
+    >
+      <div dir="rtl">
+        <YourApp />
+      </div>
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+RTL languages that are automatically handled:
+- `ar` - Arabic
+- `he` - Hebrew  
+- `fa` - Persian
+- `ur` - Urdu
+
+## Complete Example: Multi-language Application
+
+Here's a full example with language selection, persistence, and i18n integration:
+
+```jsx
+import { useState, useEffect, useCallback } from 'react';
+import {
+  GoogleReCaptchaProvider,
+  useGoogleReCaptcha
+} from 'react-google-recaptcha-v3';
+
+const SUPPORTED_LANGUAGES = [
+  { code: 'en', name: 'English' },
+  { code: 'es', name: 'Español' },
+  { code: 'fr', name: 'Français' },
+  { code: 'de', name: 'Deutsch' },
+  { code: 'ja', name: '日本語' },
+  { code: 'zh-CN', name: '简体中文' },
+  { code: 'ar', name: 'العربية' }
+];
+
+function LanguageSelector({ currentLanguage, onLanguageChange }) {
+  return (
+    <select 
+      value={currentLanguage} 
+      onChange={(e) => onLanguageChange(e.target.value)}
+      style={{ 
+        padding: '8px',
+        fontSize: '16px',
+        direction: currentLanguage === 'ar' ? 'rtl' : 'ltr'
+      }}
+    >
+      {SUPPORTED_LANGUAGES.map(lang => (
+        <option key={lang.code} value={lang.code}>
+          {lang.name}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function ContactForm() {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+  const [status, setStatus] = useState('');
+
+  const handleSubmit = useCallback(async (e) => {
+    e.preventDefault();
+
+    if (!executeRecaptcha) {
+      setStatus('reCAPTCHA not ready');
+      return;
+    }
+
+    const token = await executeRecaptcha('contact_form');
+    
+    // Send to backend with language context
+    const response = await fetch('/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        token,
+        language: navigator.language 
+      })
+    });
+
+    if (response.ok) {
+      setStatus('✓ Message sent!');
+    }
+  }, [executeRecaptcha]);
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input type="email" placeholder="Email" required />
+      <textarea placeholder="Message" required />
+      <button type="submit">Send</button>
+      {status && <p>{status}</p>}
+    </form>
+  );
+}
+
+function App() {
+  // Initialize language from localStorage or browser
+  const [language, setLanguage] = useState(() => {
+    const saved = localStorage.getItem('preferredLanguage');
+    if (saved) return saved;
+    
+    const browserLang = navigator.language.split('-')[0];
+    const supported = SUPPORTED_LANGUAGES.find(l => l.code === browserLang);
+    return supported ? supported.code : 'en';
+  });
+
+  // Persist language preference
+  useEffect(() => {
+    localStorage.setItem('preferredLanguage', language);
+    
+    // Set document direction for RTL languages
+    document.dir = ['ar', 'he', 'fa', 'ur'].includes(language) ? 'rtl' : 'ltr';
+  }, [language]);
+
+  const handleLanguageChange = (newLanguage) => {
+    setLanguage(newLanguage);
+  };
+
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey={process.env.REACT_APP_RECAPTCHA_KEY}
+      language={language}
+    >
+      <div className="app">
+        <header>
+          <h1>Contact Us</h1>
+          <LanguageSelector 
+            currentLanguage={language}
+            onLanguageChange={handleLanguageChange}
+          />
+        </header>
+        
+        <main>
+          <ContactForm />
+        </main>
+      </div>
+    </GoogleReCaptchaProvider>
+  );
+}
+
+export default App;
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Badge still shows in English">
+    **Common causes**:
+    1. Language code is invalid or not supported
+    2. Script hasn't reloaded after language change
+    3. Typo in language code
+    
+    **Solutions**:
+    - Verify language code against [Google's list](https://developers.google.com/recaptcha/docs/language)
+    - Check browser console for script loading errors
+    - Use exact language codes (e.g., `zh-CN` not `zh_CN`)
+  </Accordion>
+
+  <Accordion title="Script reloads frequently">
+    **Cause**: Language prop is changing on every render.
+    
+    **Solution**: Use `useState`, `useMemo`, or lift language state to avoid unnecessary changes:
+    ```jsx
+    const language = useMemo(() => {
+      return navigator.language.split('-')[0];
+    }, []); // Empty deps - calculate once
+    ```
+  </Accordion>
+
+  <Accordion title="Regional variant not working">
+    **Cause**: Not all languages have regional variants in reCAPTCHA.
+    
+    **Solution**: If a specific variant doesn't work, fall back to the base language:
+    ```jsx
+    const language = 'pt-BR'; // Try regional first
+    // If issues occur, use just 'pt'
+    ```
+  </Accordion>
+
+  <Accordion title="RTL layout issues">
+    **Cause**: Page direction not set to RTL.
+    
+    **Solution**: Set `dir` attribute on root element:
+    ```jsx
+    <div dir={language === 'ar' ? 'rtl' : 'ltr'}>
+      <YourApp />
+    </div>
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Detect user language" icon="globe">
+    Use browser language detection to provide a better default experience, but allow users to override.
+  </Card>
+  
+  <Card title="Persist preferences" icon="floppy-disk">
+    Save language selection to localStorage so users don't have to select it again.
+  </Card>
+  
+  <Card title="Match your app's language" icon="arrows-to-circle">
+    Keep reCAPTCHA language in sync with your application's i18n system.
+  </Card>
+  
+  <Card title="Provide fallbacks" icon="life-ring">
+    Default to a widely-spoken language (like English) if the user's language isn't supported.
+  </Card>
+</CardGroup>
+
+## Combining with Other Features
+
+### Language + Enterprise
+
+```jsx
+<GoogleReCaptchaProvider
+  reCaptchaKey="YOUR_ENTERPRISE_KEY"
+  language="es"
+  useEnterprise={true}
+>
+  <YourApp />
+</GoogleReCaptchaProvider>
+```
+
+### Language + Custom Container
+
+```jsx
+<GoogleReCaptchaProvider
+  reCaptchaKey="YOUR_SITE_KEY"
+  language="ja"
+  container={{
+    element: 'recaptcha-badge',
+    parameters: {
+      badge: 'inline',
+      theme: 'dark'
+    }
+  }}
+>
+  <div id="recaptcha-badge" />
+</GoogleReCaptchaProvider>
+```
+
+### Language + recaptcha.net
+
+```jsx
+<GoogleReCaptchaProvider
+  reCaptchaKey="YOUR_SITE_KEY"
+  language="zh-CN"
+  useRecaptchaNet={true}  // Important for China
+>
+  <YourApp />
+</GoogleReCaptchaProvider>
+```
+
+## Resources
+
+- [Google reCAPTCHA Language Codes](https://developers.google.com/recaptcha/docs/language)
+- [MDN: Navigator.language](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/language)
+- [react-i18next Documentation](https://react.i18next.com/)
+- [React Intl Documentation](https://formatjs.io/docs/react-intl/)

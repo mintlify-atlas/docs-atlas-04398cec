@@ -1,0 +1,564 @@
+---
+title: 'Custom Container Rendering'
+description: 'Learn how to render the reCAPTCHA badge in a custom container with full control over placement and styling'
+---
+
+## Overview
+
+By default, Google reCAPTCHA renders a badge in the bottom-right corner of your page. With custom container rendering, you can:
+
+- Control exactly where the badge appears
+- Render the badge inline within your UI
+- Apply custom styling and theming
+- Manage multiple reCAPTCHA instances
+
+## How It Works
+
+When you provide a `container` prop to `GoogleReCaptchaProvider`, the library:
+
+1. Uses **explicit rendering** mode instead of automatic rendering
+2. Calls `grecaptcha.render()` with your specified element
+3. Applies custom parameters like badge position and theme
+4. Returns a client ID that's used for token generation
+
+Source reference: `src/google-recaptcha-provider.tsx:98-104`
+
+## Basic Usage
+
+<Steps>
+  <Step title="Create a container element">
+    Add a div with a unique ID where you want the badge to appear:
+    
+    ```jsx
+    function App() {
+      return (
+        <div>
+          <h1>My Application</h1>
+          {/* Badge will render here */}
+          <div id="recaptcha-container" />
+        </div>
+      );
+    }
+    ```
+  </Step>
+
+  <Step title="Configure the provider">
+    Pass the container configuration to `GoogleReCaptchaProvider`:
+    
+    ```jsx
+    import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+
+    function App() {
+      return (
+        <GoogleReCaptchaProvider
+          reCaptchaKey="YOUR_SITE_KEY"
+          container={{
+            element: 'recaptcha-container',
+            parameters: {
+              badge: 'inline'
+            }
+          }}
+        >
+          <div>
+            <h1>My Application</h1>
+            <div id="recaptcha-container" />
+          </div>
+        </GoogleReCaptchaProvider>
+      );
+    }
+    ```
+  </Step>
+
+  <Step title="Use executeRecaptcha normally">
+    Token generation works the same way:
+    
+    ```jsx
+    import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+    function MyComponent() {
+      const { executeRecaptcha } = useGoogleReCaptcha();
+
+      const handleAction = async () => {
+        if (!executeRecaptcha) return;
+        
+        const token = await executeRecaptcha('my_action');
+        // Use token...
+      };
+
+      return <button onClick={handleAction}>Submit</button>;
+    }
+    ```
+  </Step>
+</Steps>
+
+## Container Configuration
+
+### Element Options
+
+The `element` property accepts two types:
+
+<ParamField path="container.element" type="string | HTMLElement" required>
+  - **String**: ID of the container element (without `#`)
+  - **HTMLElement**: Direct reference to a DOM element
+</ParamField>
+
+<CodeGroup>
+```jsx Using String ID
+<GoogleReCaptchaProvider
+  reCaptchaKey="YOUR_SITE_KEY"
+  container={{
+    element: 'my-recaptcha-badge',  // ID without '#'
+    parameters: { badge: 'inline' }
+  }}
+>
+  <div id="my-recaptcha-badge" />
+</GoogleReCaptchaProvider>
+```
+
+```jsx Using HTMLElement Reference
+import { useEffect, useRef } from 'react';
+
+function App() {
+  const containerRef = useRef(null);
+  const [container, setContainer] = useState(null);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      setContainer(containerRef.current);
+    }
+  }, []);
+
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey="YOUR_SITE_KEY"
+      container={{
+        element: container,
+        parameters: { badge: 'inline' }
+      }}
+    >
+      <div ref={containerRef} />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+</CodeGroup>
+
+### Parameter Options
+
+<ParamField path="container.parameters" type="object">
+  Configuration object for the reCAPTCHA badge appearance and behavior.
+</ParamField>
+
+<ParamField path="container.parameters.badge" type="'inline' | 'bottomright' | 'bottomleft'">
+  Position of the reCAPTCHA badge:
+  - `inline`: Renders inside your container element
+  - `bottomright`: Fixed position in bottom-right corner (default)
+  - `bottomleft`: Fixed position in bottom-left corner
+</ParamField>
+
+<ParamField path="container.parameters.theme" type="'light' | 'dark'">
+  Visual theme of the badge. Defaults to `light`.
+</ParamField>
+
+<ParamField path="container.parameters.tabindex" type="number">
+  Tab index for keyboard navigation.
+</ParamField>
+
+<ParamField path="container.parameters.callback" type="() => void">
+  Function called when the user submits a successful response.
+</ParamField>
+
+<ParamField path="container.parameters.expiredCallback" type="() => void">
+  Function called when the response expires and needs revalidation.
+</ParamField>
+
+<ParamField path="container.parameters.errorCallback" type="() => void">
+  Function called when an error occurs during verification.
+</ParamField>
+
+## Common Patterns
+
+### Inline Badge in Footer
+
+Render the badge inline within your footer:
+
+```jsx
+function App() {
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey="YOUR_SITE_KEY"
+      container={{
+        element: 'footer-recaptcha',
+        parameters: {
+          badge: 'inline',
+          theme: 'light'
+        }
+      }}
+    >
+      <main>
+        {/* Your app content */}
+      </main>
+      
+      <footer>
+        <p>Protected by reCAPTCHA</p>
+        <div id="footer-recaptcha" />
+      </footer>
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+### Dark Theme Badge
+
+Match the badge to a dark-themed UI:
+
+```jsx
+<GoogleReCaptchaProvider
+  reCaptchaKey="YOUR_SITE_KEY"
+  container={{
+    element: 'dark-badge',
+    parameters: {
+      badge: 'inline',
+      theme: 'dark'
+    }
+  }}
+>
+  <div className="dark-mode">
+    <div id="dark-badge" />
+  </div>
+</GoogleReCaptchaProvider>
+```
+
+### Badge in Modal or Dialog
+
+Render the badge inside a modal:
+
+```jsx
+function LoginModal({ isOpen }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal">
+      <h2>Login</h2>
+      <form>
+        <input type="email" placeholder="Email" />
+        <input type="password" placeholder="Password" />
+        <button type="submit">Login</button>
+      </form>
+      
+      {/* Badge appears at bottom of modal */}
+      <div id="modal-recaptcha" />
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey="YOUR_SITE_KEY"
+      container={{
+        element: 'modal-recaptcha',
+        parameters: {
+          badge: 'inline',
+          theme: 'light'
+        }
+      }}
+    >
+      <LoginModal isOpen={true} />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+### Custom Positioning with CSS
+
+Style the container element to position the badge exactly where you want:
+
+```jsx
+function App() {
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey="YOUR_SITE_KEY"
+      container={{
+        element: 'custom-badge',
+        parameters: {
+          badge: 'inline'
+        }
+      }}
+    >
+      <div 
+        id="custom-badge" 
+        style={{
+          position: 'fixed',
+          bottom: '20px',
+          left: '20px',
+          zIndex: 1000
+        }}
+      />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+## Advanced: Lifecycle Callbacks
+
+Monitor badge interactions with callback functions:
+
+```jsx
+function App() {
+  const handleCallback = () => {
+    console.log('User submitted a response');
+  };
+
+  const handleExpired = () => {
+    console.log('Response expired, needs revalidation');
+  };
+
+  const handleError = () => {
+    console.error('reCAPTCHA encountered an error');
+  };
+
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey="YOUR_SITE_KEY"
+      container={{
+        element: 'monitored-badge',
+        parameters: {
+          badge: 'inline',
+          callback: handleCallback,
+          expiredCallback: handleExpired,
+          errorCallback: handleError
+        }
+      }}
+    >
+      <div id="monitored-badge" />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+<Warning>
+Make sure callback functions are stable references (use `useCallback`) to prevent unnecessary re-renders of the provider.
+</Warning>
+
+## Styling the Badge
+
+The badge is rendered in an iframe, which limits direct styling. However, you can:
+
+### Control Container Size
+
+The badge has a fixed size, but you can control its container:
+
+```css
+#recaptcha-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+}
+```
+
+### Hide Badge (with caution)
+
+<Warning>
+Google's terms of service require the reCAPTCHA badge to be visible unless you include specific disclosure text. See [Google's FAQ](https://developers.google.com/recaptcha/docs/faq#id-like-to-hide-the-recaptcha-badge.-what-is-allowed) for details.
+</Warning>
+
+If you include the required disclosure, you can hide the badge:
+
+```css
+.grecaptcha-badge {
+  visibility: hidden;
+}
+```
+
+Required disclosure text:
+```html
+<p>
+  This site is protected by reCAPTCHA and the Google
+  <a href="https://policies.google.com/privacy">Privacy Policy</a> and
+  <a href="https://policies.google.com/terms">Terms of Service</a> apply.
+</p>
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Badge doesn't appear">
+    **Common causes**:
+    1. Container element doesn't exist when provider mounts
+    2. Element ID is incorrect or includes `#`
+    3. Script hasn't finished loading
+    
+    **Solutions**:
+    ```jsx
+    // Ensure container exists before provider
+    <GoogleReCaptchaProvider
+      reCaptchaKey="YOUR_SITE_KEY"
+      container={{
+        element: 'my-badge',  // No '#' prefix
+        parameters: { badge: 'inline' }
+      }}
+    >
+      {/* Container must be rendered */}
+      <div id="my-badge" />
+    </GoogleReCaptchaProvider>
+    ```
+  </Accordion>
+
+  <Accordion title="Badge appears in wrong location">
+    **Cause**: Using `bottomright` or `bottomleft` instead of `inline`.
+    
+    **Solution**: Set `badge: 'inline'` in parameters:
+    ```jsx
+    container={{
+      element: 'my-badge',
+      parameters: {
+        badge: 'inline'  // Not 'bottomright'
+      }
+    }}
+    ```
+  </Accordion>
+
+  <Accordion title="Multiple badges appear">
+    **Cause**: Provider is re-rendering and creating duplicate badges.
+    
+    **Solution**: 
+    - Ensure provider is placed high in your component tree
+    - Check that container element ID is unique
+    - Verify provider isn't being remounted unnecessarily
+    - The library automatically cleans up on unmount (see `src/utils.ts:110-125`)
+  </Accordion>
+
+  <Accordion title="Badge doesn't match theme">
+    **Cause**: Theme parameter not set or being overridden.
+    
+    **Solution**:
+    ```jsx
+    container={{
+      element: 'my-badge',
+      parameters: {
+        badge: 'inline',
+        theme: 'dark'  // Explicitly set theme
+      }
+    }}
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Complete Example
+
+Here's a full example with custom container, dark theme, and lifecycle callbacks:
+
+```jsx
+import { useState, useCallback } from 'react';
+import {
+  GoogleReCaptchaProvider,
+  useGoogleReCaptcha
+} from 'react-google-recaptcha-v3';
+
+function ContactForm() {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+  const [status, setStatus] = useState('');
+
+  const handleSubmit = useCallback(async (e) => {
+    e.preventDefault();
+
+    if (!executeRecaptcha) {
+      setStatus('reCAPTCHA not ready');
+      return;
+    }
+
+    try {
+      const token = await executeRecaptcha('contact_form');
+      
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+
+      if (response.ok) {
+        setStatus('Message sent successfully!');
+      }
+    } catch (error) {
+      setStatus('Error sending message');
+    }
+  }, [executeRecaptcha]);
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input type="text" placeholder="Name" required />
+      <input type="email" placeholder="Email" required />
+      <textarea placeholder="Message" required />
+      <button type="submit">Send Message</button>
+      {status && <p>{status}</p>}
+    </form>
+  );
+}
+
+function App() {
+  const handleBadgeCallback = useCallback(() => {
+    console.log('Badge interaction detected');
+  }, []);
+
+  const handleBadgeExpired = useCallback(() => {
+    console.warn('Badge expired, will refresh on next action');
+  }, []);
+
+  const handleBadgeError = useCallback(() => {
+    console.error('reCAPTCHA error occurred');
+  }, []);
+
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey={process.env.REACT_APP_RECAPTCHA_KEY}
+      container={{
+        element: 'recaptcha-badge',
+        parameters: {
+          badge: 'inline',
+          theme: 'dark',
+          tabindex: 0,
+          callback: handleBadgeCallback,
+          expiredCallback: handleBadgeExpired,
+          errorCallback: handleBadgeError
+        }
+      }}
+    >
+      <div className="app dark-theme">
+        <h1>Contact Us</h1>
+        <ContactForm />
+        
+        <footer>
+          <p>Protected by reCAPTCHA</p>
+          <div id="recaptcha-badge" />
+        </footer>
+      </div>
+    </GoogleReCaptchaProvider>
+  );
+}
+
+export default App;
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Place container early" icon="arrow-up">
+    Render the container element before the provider mounts to avoid timing issues.
+  </Card>
+  
+  <Card title="Use inline for control" icon="location-dot">
+    Set `badge: 'inline'` when you want full control over badge placement.
+  </Card>
+  
+  <Card title="Respect Google's ToS" icon="shield-check">
+    Keep the badge visible or include required disclosure text if hiding it.
+  </Card>
+  
+  <Card title="Stable callbacks" icon="link">
+    Wrap callback functions in `useCallback` to prevent unnecessary re-renders.
+  </Card>
+</CardGroup>

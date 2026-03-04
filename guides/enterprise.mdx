@@ -1,0 +1,361 @@
+---
+title: 'Using reCAPTCHA Enterprise'
+description: 'Learn how to integrate Google reCAPTCHA Enterprise with react-google-recaptcha-v3'
+---
+
+## Overview
+
+Google reCAPTCHA Enterprise provides advanced bot detection and risk analysis capabilities. This guide shows you how to migrate from standard reCAPTCHA v3 to the Enterprise version and configure it properly.
+
+<Warning>
+When you enable the Enterprise version, you **must create new keys**. These keys will replace any Site Keys you created in standard reCAPTCHA.
+</Warning>
+
+## Prerequisites
+
+Before using reCAPTCHA Enterprise:
+
+1. Set up a Google Cloud project
+2. Enable the reCAPTCHA Enterprise API
+3. Create Enterprise keys with **Scoring** integration type (equivalent to reCAPTCHA v3)
+4. Configure your domain/app package name
+
+<Info>
+The Integration type must be set to **Scoring** for compatibility with this library, as it's equivalent to reCAPTCHA v3's scoring mechanism.
+</Info>
+
+## Basic Setup
+
+<Steps>
+  <Step title="Install the package">
+    If you haven't already, install react-google-recaptcha-v3:
+    
+    ```bash
+    npm install react-google-recaptcha-v3
+    ```
+  </Step>
+
+  <Step title="Enable Enterprise mode">
+    Set the `useEnterprise` prop to `true` on the `GoogleReCaptchaProvider`:
+    
+    ```jsx
+    import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+
+    function App() {
+      return (
+        <GoogleReCaptchaProvider
+          reCaptchaKey="YOUR_ENTERPRISE_SITE_KEY"
+          useEnterprise={true}
+        >
+          <YourApp />
+        </GoogleReCaptchaProvider>
+      );
+    }
+    ```
+  </Step>
+
+  <Step title="Use executeRecaptcha normally">
+    The usage pattern remains the same as standard reCAPTCHA v3:
+    
+    ```jsx
+    import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+    function ContactForm() {
+      const { executeRecaptcha } = useGoogleReCaptcha();
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        
+        if (!executeRecaptcha) {
+          console.log('Execute recaptcha not yet available');
+          return;
+        }
+
+        const token = await executeRecaptcha('contact_form');
+        
+        // Send token to your backend for verification
+        await fetch('/api/contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, /* ...form data */ })
+        });
+      };
+
+      return (
+        <form onSubmit={handleSubmit}>
+          {/* Your form fields */}
+          <button type="submit">Submit</button>
+        </form>
+      );
+    }
+    ```
+  </Step>
+</Steps>
+
+## Configuration Options
+
+All standard configuration options work with Enterprise mode:
+
+```jsx
+<GoogleReCaptchaProvider
+  reCaptchaKey="YOUR_ENTERPRISE_SITE_KEY"
+  useEnterprise={true}
+  language="en"
+  useRecaptchaNet={false}
+  scriptProps={{
+    async: true,
+    defer: true,
+    appendTo: 'head',
+    nonce: 'YOUR_CSP_NONCE'
+  }}
+  container={{
+    element: 'recaptcha-badge',
+    parameters: {
+      badge: 'bottomright',
+      theme: 'light'
+    }
+  }}
+>
+  <YourApp />
+</GoogleReCaptchaProvider>
+```
+
+### Key Configuration Properties
+
+<ParamField path="useEnterprise" type="boolean" default="false">
+  Enables Enterprise mode. When `true`, the library loads `enterprise.js` instead of `api.js`.
+</ParamField>
+
+<ParamField path="useRecaptchaNet" type="boolean" default="false">
+  When combined with `useEnterprise`, loads from `https://www.recaptcha.net/recaptcha/enterprise.js` for regions where google.com is blocked.
+</ParamField>
+
+## Script Loading Behavior
+
+When `useEnterprise` is enabled, the library automatically:
+
+1. **Loads the Enterprise script**: `https://www.google.com/recaptcha/enterprise.js`
+2. **Accesses the Enterprise API**: Uses `window.grecaptcha.enterprise` instead of `window.grecaptcha`
+3. **Executes with Enterprise context**: All token generation uses the Enterprise backend
+
+### With recaptcha.net (for global availability)
+
+```jsx
+<GoogleReCaptchaProvider
+  reCaptchaKey="YOUR_ENTERPRISE_SITE_KEY"
+  useEnterprise={true}
+  useRecaptchaNet={true}
+>
+  <YourApp />
+</GoogleReCaptchaProvider>
+```
+
+This loads: `https://www.recaptcha.net/recaptcha/enterprise.js`
+
+## Backend Verification
+
+Verify tokens on your backend using the Enterprise API:
+
+<CodeGroup>
+```javascript Node.js
+const { RecaptchaEnterpriseServiceClient } = require('@google-cloud/recaptcha-enterprise');
+
+const client = new RecaptchaEnterpriseServiceClient();
+
+async function verifyToken(token, expectedAction) {
+  const projectPath = client.projectPath(process.env.GOOGLE_CLOUD_PROJECT);
+  
+  const request = {
+    assessment: {
+      event: {
+        token: token,
+        siteKey: process.env.RECAPTCHA_SITE_KEY,
+      },
+    },
+    parent: projectPath,
+  };
+
+  const [response] = await client.createAssessment(request);
+
+  // Check if the token is valid
+  if (!response.tokenProperties.valid) {
+    console.log(`Invalid token: ${response.tokenProperties.invalidReason}`);
+    return false;
+  }
+
+  // Check if the expected action was executed
+  if (response.tokenProperties.action !== expectedAction) {
+    console.log('Action mismatch');
+    return false;
+  }
+
+  // Get the risk score (0.0 - 1.0, where 1.0 is least risky)
+  const score = response.riskAnalysis.score;
+  console.log(`Risk score: ${score}`);
+
+  // Apply your business logic based on the score
+  return score >= 0.5;
+}
+```
+
+```python Python
+from google.cloud import recaptchaenterprise_v1
+from google.cloud.recaptchaenterprise_v1 import Assessment
+
+def verify_token(token: str, expected_action: str) -> bool:
+    client = recaptchaenterprise_v1.RecaptchaEnterpriseServiceClient()
+    project_id = "YOUR_PROJECT_ID"
+    site_key = "YOUR_SITE_KEY"
+    
+    event = recaptchaenterprise_v1.Event()
+    event.site_key = site_key
+    event.token = token
+    
+    assessment = recaptchaenterprise_v1.Assessment()
+    assessment.event = event
+    
+    project_name = f"projects/{project_id}"
+    request = recaptchaenterprise_v1.CreateAssessmentRequest()
+    request.parent = project_name
+    request.assessment = assessment
+    
+    response = client.create_assessment(request)
+    
+    if not response.token_properties.valid:
+        print(f"Invalid token: {response.token_properties.invalid_reason}")
+        return False
+    
+    if response.token_properties.action != expected_action:
+        print("Action mismatch")
+        return False
+    
+    score = response.risk_analysis.score
+    print(f"Risk score: {score}")
+    
+    return score >= 0.5
+```
+</CodeGroup>
+
+## Migration from Standard v3
+
+<Steps>
+  <Step title="Create Enterprise keys">
+    Generate new Enterprise keys in Google Cloud Console with Scoring integration type.
+  </Step>
+
+  <Step title="Update environment variables">
+    Replace your standard reCAPTCHA key with the Enterprise key:
+    
+    ```bash
+    # Before
+    RECAPTCHA_SITE_KEY=6Lc..._standard_key
+    
+    # After
+    RECAPTCHA_SITE_KEY=6Lc..._enterprise_key
+    ```
+  </Step>
+
+  <Step title="Enable Enterprise mode">
+    Add `useEnterprise={true}` to your provider:
+    
+    ```jsx
+    <GoogleReCaptchaProvider
+      reCaptchaKey={process.env.RECAPTCHA_SITE_KEY}
+      useEnterprise={true} // Add this line
+    >
+      <YourApp />
+    </GoogleReCaptchaProvider>
+    ```
+  </Step>
+
+  <Step title="Update backend verification">
+    Switch from the standard API to the Enterprise API for token verification (see Backend Verification section above).
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Error: Invalid site key">
+    **Cause**: Using a standard reCAPTCHA v3 key instead of an Enterprise key.
+    
+    **Solution**: Create new keys specifically for Enterprise in Google Cloud Console. Standard keys will not work with `useEnterprise={true}`.
+  </Accordion>
+
+  <Accordion title="Error: Integration type not supported">
+    **Cause**: Enterprise key was created with Checkbox integration type instead of Scoring.
+    
+    **Solution**: Create a new Enterprise key and select **Scoring** as the integration type.
+  </Accordion>
+
+  <Accordion title="Script loads but executeRecaptcha is undefined">
+    **Cause**: The Enterprise script may not have loaded properly.
+    
+    **Solution**: 
+    1. Check browser console for script loading errors
+    2. Verify your site key is correct
+    3. Ensure the domain is registered in Google Cloud Console
+  </Accordion>
+
+  <Accordion title="Backend verification fails">
+    **Cause**: Mismatch between frontend and backend configuration.
+    
+    **Solution**:
+    - Ensure you're using the Enterprise verification API, not the standard v3 API
+    - Verify the project ID and site key match in both frontend and backend
+    - Check that the action name matches between `executeRecaptcha('action')` and backend verification
+  </Accordion>
+</AccordionGroup>
+
+## Advanced: Custom Container with Enterprise
+
+You can combine Enterprise mode with custom badge rendering:
+
+```jsx
+function App() {
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey="YOUR_ENTERPRISE_SITE_KEY"
+      useEnterprise={true}
+      container={{
+        element: 'custom-recaptcha-badge',
+        parameters: {
+          badge: 'inline',
+          theme: 'dark'
+        }
+      }}
+    >
+      <YourApp />
+      <div id="custom-recaptcha-badge" />
+    </GoogleReCaptchaProvider>
+  );
+}
+```
+
+See the [Custom Container Guide](/guides/custom-container) for more details.
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use meaningful actions" icon="tag">
+    Name your actions descriptively (e.g., `'login'`, `'purchase'`, `'contact_form'`) to get better analytics in the Enterprise dashboard.
+  </Card>
+  
+  <Card title="Implement score-based logic" icon="chart-line">
+    Use different risk score thresholds for different actions. Critical actions may require higher scores.
+  </Card>
+  
+  <Card title="Monitor in Cloud Console" icon="gauge">
+    Use the reCAPTCHA Enterprise dashboard to analyze traffic patterns and adjust your score thresholds.
+  </Card>
+  
+  <Card title="Handle verification server-side" icon="server">
+    Always verify tokens on your backend. Never trust client-side validation alone.
+  </Card>
+</CardGroup>
+
+## Resources
+
+- [Google reCAPTCHA Enterprise Documentation](https://cloud.google.com/recaptcha-enterprise/docs)
+- [Migration Guide from v3 to Enterprise](https://cloud.google.com/recaptcha-enterprise/docs/migrate-recaptcha)
+- [Enterprise Quickstart](https://cloud.google.com/recaptcha-enterprise/docs/quickstart)

@@ -1,0 +1,633 @@
+---
+title: 'Form Validation'
+description: 'Implement reCAPTCHA v3 in form submissions to prevent spam and abuse'
+icon: 'file-check'
+---
+
+## Overview
+
+Integrating reCAPTCHA v3 into form validation helps protect your forms from spam and automated abuse. This guide shows you how to implement reCAPTCHA verification in various form scenarios.
+
+## Login Form Example
+
+A complete login form with reCAPTCHA verification:
+
+<CodeGroup>
+
+```jsx LoginPage.jsx
+import React from 'react';
+import ReactDOM from 'react-dom';
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+import { LoginForm } from './LoginForm';
+
+function LoginPage() {
+  return (
+    <GoogleReCaptchaProvider reCaptchaKey="YOUR_RECAPTCHA_SITE_KEY">
+      <div className="login-page">
+        <h1>Welcome Back</h1>
+        <LoginForm />
+      </div>
+    </GoogleReCaptchaProvider>
+  );
+}
+
+ReactDOM.render(<LoginPage />, document.getElementById('root'));
+```
+
+```jsx LoginForm.jsx
+import React, { useState, useCallback } from 'react';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+export function LoginForm() {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = useCallback(async (event) => {
+    event.preventDefault();
+    setError('');
+    setIsLoading(true);
+
+    try {
+      // Check if reCAPTCHA is ready
+      if (!executeRecaptcha) {
+        setError('reCAPTCHA not ready. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Execute reCAPTCHA and get token
+      const recaptchaToken = await executeRecaptcha('login');
+
+      // Submit form with reCAPTCHA token
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          recaptchaToken,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
+      // Successful login
+      window.location.href = '/dashboard';
+    } catch (err) {
+      setError(err.message || 'An error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [email, password, executeRecaptcha]);
+
+  return (
+    <form onSubmit={handleSubmit} className="login-form">
+      {error && (
+        <div className="error-message">
+          {error}
+        </div>
+      )}
+      
+      <div className="form-group">
+        <label htmlFor="email">Email Address</label>
+        <input
+          id="email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          disabled={isLoading}
+          placeholder="you@example.com"
+        />
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="password">Password</label>
+        <input
+          id="password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          disabled={isLoading}
+          placeholder="••••••••"
+        />
+      </div>
+
+      <button type="submit" disabled={isLoading}>
+        {isLoading ? 'Logging in...' : 'Log In'}
+      </button>
+
+      <p className="recaptcha-notice">
+        This site is protected by reCAPTCHA and the Google{' '}
+        <a href="https://policies.google.com/privacy">Privacy Policy</a> and{' '}
+        <a href="https://policies.google.com/terms">Terms of Service</a> apply.
+      </p>
+    </form>
+  );
+}
+```
+
+```javascript Backend API (Express.js)
+const express = require('express');
+const axios = require('axios');
+const app = express();
+
+app.use(express.json());
+
+app.post('/api/login', async (req, res) => {
+  const { email, password, recaptchaToken } = req.body;
+
+  try {
+    // Verify reCAPTCHA token
+    const recaptchaResponse = await axios.post(
+      'https://www.google.com/recaptcha/api/siteverify',
+      null,
+      {
+        params: {
+          secret: process.env.RECAPTCHA_SECRET_KEY,
+          response: recaptchaToken,
+        },
+      }
+    );
+
+    const { success, score, action } = recaptchaResponse.data;
+
+    // Check if reCAPTCHA verification was successful
+    if (!success) {
+      return res.status(400).json({
+        message: 'reCAPTCHA verification failed',
+      });
+    }
+
+    // Check if the action matches what we expect
+    if (action !== 'login') {
+      return res.status(400).json({
+        message: 'Invalid reCAPTCHA action',
+      });
+    }
+
+    // Check if score is acceptable (0.0 - 1.0, higher is better)
+    if (score < 0.5) {
+      return res.status(400).json({
+        message: 'Suspicious activity detected. Please try again.',
+      });
+    }
+
+    // Proceed with authentication
+    // ... your authentication logic here
+
+    res.json({ success: true, message: 'Login successful' });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+```
+
+</CodeGroup>
+
+<Note>
+  The reCAPTCHA score ranges from 0.0 (likely a bot) to 1.0 (likely a human). Most applications use a threshold of 0.5, but you can adjust this based on your needs.
+</Note>
+
+## Contact Form Example
+
+Protect your contact form from spam submissions:
+
+```jsx ContactForm.jsx
+import React, { useState, useCallback } from 'react';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+export function ContactForm() {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    subject: '',
+    message: '',
+  });
+  const [status, setStatus] = useState('idle'); // idle, submitting, success, error
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = useCallback(async (event) => {
+    event.preventDefault();
+    setStatus('submitting');
+    setErrorMessage('');
+
+    try {
+      if (!executeRecaptcha) {
+        throw new Error('reCAPTCHA not ready');
+      }
+
+      // Get reCAPTCHA token
+      const recaptchaToken = await executeRecaptcha('contact_form');
+
+      // Submit form
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          recaptchaToken,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Submission failed');
+      }
+
+      setStatus('success');
+      // Reset form
+      setFormData({ name: '', email: '', subject: '', message: '' });
+    } catch (err) {
+      setStatus('error');
+      setErrorMessage(err.message);
+    }
+  }, [formData, executeRecaptcha]);
+
+  if (status === 'success') {
+    return (
+      <div className="success-message">
+        <h3>Thank you for your message!</h3>
+        <p>We'll get back to you as soon as possible.</p>
+        <button onClick={() => setStatus('idle')}>Send Another Message</button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="contact-form">
+      <h2>Contact Us</h2>
+      
+      {status === 'error' && (
+        <div className="error-alert">
+          {errorMessage}
+        </div>
+      )}
+
+      <div className="form-group">
+        <label htmlFor="name">Name *</label>
+        <input
+          id="name"
+          name="name"
+          type="text"
+          value={formData.name}
+          onChange={handleChange}
+          required
+          disabled={status === 'submitting'}
+        />
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="email">Email *</label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          value={formData.email}
+          onChange={handleChange}
+          required
+          disabled={status === 'submitting'}
+        />
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="subject">Subject *</label>
+        <input
+          id="subject"
+          name="subject"
+          type="text"
+          value={formData.subject}
+          onChange={handleChange}
+          required
+          disabled={status === 'submitting'}
+        />
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="message">Message *</label>
+        <textarea
+          id="message"
+          name="message"
+          value={formData.message}
+          onChange={handleChange}
+          required
+          disabled={status === 'submitting'}
+          rows="5"
+        />
+      </div>
+
+      <button type="submit" disabled={status === 'submitting'}>
+        {status === 'submitting' ? 'Sending...' : 'Send Message'}
+      </button>
+    </form>
+  );
+}
+```
+
+<Tip>
+  Use different action names for different forms (e.g., `contact_form`, `newsletter_signup`, `login`) to track which forms are being targeted by bots in your reCAPTCHA admin console.
+</Tip>
+
+## Registration Form with Validation
+
+A more complex example with client-side and server-side validation:
+
+```jsx RegistrationForm.jsx
+import React, { useState, useCallback } from 'react';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+export function RegistrationForm() {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+  const [formData, setFormData] = useState({
+    username: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Client-side validation
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (formData.username.length < 3) {
+      newErrors.username = 'Username must be at least 3 characters';
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+
+    if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+
+    return newErrors;
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    // Clear error for this field when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const handleSubmit = useCallback(async (event) => {
+    event.preventDefault();
+    
+    // Client-side validation
+    const validationErrors = validateForm();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrors({});
+
+    try {
+      if (!executeRecaptcha) {
+        throw new Error('reCAPTCHA not ready');
+      }
+
+      // Get reCAPTCHA token
+      const recaptchaToken = await executeRecaptcha('register');
+
+      // Submit registration
+      const response = await fetch('/api/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
+          recaptchaToken,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Handle server-side validation errors
+        if (data.errors) {
+          setErrors(data.errors);
+        } else {
+          throw new Error(data.message || 'Registration failed');
+        }
+        return;
+      }
+
+      // Successful registration
+      alert('Registration successful! Please check your email.');
+      window.location.href = '/login';
+    } catch (err) {
+      setErrors({ submit: err.message });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [formData, executeRecaptcha]);
+
+  return (
+    <form onSubmit={handleSubmit} className="registration-form">
+      <h2>Create an Account</h2>
+
+      {errors.submit && (
+        <div className="error-alert">
+          {errors.submit}
+        </div>
+      )}
+
+      <div className="form-group">
+        <label htmlFor="username">Username *</label>
+        <input
+          id="username"
+          name="username"
+          type="text"
+          value={formData.username}
+          onChange={handleChange}
+          required
+          disabled={isSubmitting}
+        />
+        {errors.username && <span className="error">{errors.username}</span>}
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="email">Email *</label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          value={formData.email}
+          onChange={handleChange}
+          required
+          disabled={isSubmitting}
+        />
+        {errors.email && <span className="error">{errors.email}</span>}
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="password">Password *</label>
+        <input
+          id="password"
+          name="password"
+          type="password"
+          value={formData.password}
+          onChange={handleChange}
+          required
+          disabled={isSubmitting}
+        />
+        {errors.password && <span className="error">{errors.password}</span>}
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="confirmPassword">Confirm Password *</label>
+        <input
+          id="confirmPassword"
+          name="confirmPassword"
+          type="password"
+          value={formData.confirmPassword}
+          onChange={handleChange}
+          required
+          disabled={isSubmitting}
+        />
+        {errors.confirmPassword && <span className="error">{errors.confirmPassword}</span>}
+      </div>
+
+      <button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? 'Creating Account...' : 'Create Account'}
+      </button>
+
+      <p className="recaptcha-notice">
+        This site is protected by reCAPTCHA and the Google{' '}
+        <a href="https://policies.google.com/privacy">Privacy Policy</a> and{' '}
+        <a href="https://policies.google.com/terms">Terms of Service</a> apply.
+      </p>
+    </form>
+  );
+}
+```
+
+## TypeScript Support
+
+For TypeScript users, here's a type-safe form example:
+
+```tsx TypeScriptForm.tsx
+import React, { useState, useCallback, FormEvent, ChangeEvent } from 'react';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+interface FormData {
+  email: string;
+  message: string;
+}
+
+interface FormErrors {
+  email?: string;
+  message?: string;
+  submit?: string;
+}
+
+export function TypeScriptForm() {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+  const [formData, setFormData] = useState<FormData>({
+    email: '',
+    message: '',
+  });
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = useCallback(async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSubmitting(true);
+    setErrors({});
+
+    try {
+      if (!executeRecaptcha) {
+        throw new Error('reCAPTCHA not available');
+      }
+
+      const recaptchaToken = await executeRecaptcha('submit_form');
+
+      const response = await fetch('/api/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          recaptchaToken,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Submission failed');
+      }
+
+      // Success handling
+      alert('Form submitted successfully!');
+    } catch (err) {
+      setErrors({ submit: (err as Error).message });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [formData, executeRecaptcha]);
+
+  return (
+    <form onSubmit={handleSubmit}>
+      {/* Form fields */}
+    </form>
+  );
+}
+```
+
+<Note>
+  Always perform server-side validation in addition to client-side validation. Never trust client-side data alone.
+</Note>
+
+## Best Practices
+
+1. **Always verify on the backend**: Never rely solely on client-side verification
+2. **Use meaningful action names**: This helps you analyze bot patterns in the reCAPTCHA dashboard
+3. **Handle loading states**: Show appropriate UI feedback while reCAPTCHA is loading
+4. **Set appropriate score thresholds**: Adjust based on your security needs (0.5 is a good starting point)
+5. **Provide user feedback**: Let users know if their submission was flagged as suspicious
+6. **Rate limiting**: Combine reCAPTCHA with rate limiting on your backend for additional security
+
+## Next Steps
+
+- Learn how to [Refresh reCAPTCHA Tokens](/examples/refresh-recaptcha)
+- Explore [Provider Configuration](/api/google-recaptcha-provider)
+- Check out [useGoogleReCaptcha API Reference](/api/use-google-recaptcha-hook)
