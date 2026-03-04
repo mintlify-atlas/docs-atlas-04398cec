@@ -1,0 +1,93 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "React Google reCAPTCHA V3",
+  "projectDescription": "React library for integrating Google reCAPTCHA V3 to your application",
+  "theme": "palm",
+  "primaryColor": "#848c8e",
+  "lightColor": "#11161e",
+  "darkColor": "#cfd0d2",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Components",
+            "pages": [
+              "components/provider",
+              "components/google-recaptcha",
+              "components/use-google-recaptcha",
+              "components/with-google-recaptcha"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/enterprise",
+              "guides/custom-container",
+              "guides/internationalization",
+              "guides/script-customization"
+            ]
+          },
+          {
+            "group": "Examples",
+            "pages": [
+              "examples/basic-usage",
+              "examples/form-validation",
+              "examples/refresh-recaptcha"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Components",
+            "pages": [
+              "api/google-recaptcha-provider",
+              "api/google-recaptcha",
+              "api/use-google-recaptcha-hook",
+              "api/with-google-recaptcha-hoc"
+            ]
+          },
+          {
+            "group": "TypeScript",
+            "pages": [
+              "api/typescript-interfaces"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "React Context-based provider for reCAPTCHA V3",
+    "React Hook (useGoogleReCaptcha) for programmatic verification",
+    "HOC (withGoogleReCaptcha) for class components",
+    "Declarative GoogleReCaptcha component",
+    "Enterprise reCAPTCHA support",
+    "Custom container rendering",
+    "Script customization (async, defer, nonce)",
+    "Internationalization support",
+    "TypeScript type definitions"
+  ],
+  "publicApiSurface": [
+    "GoogleReCaptchaProvider",
+    "GoogleReCaptcha",
+    "useGoogleReCaptcha",
+    "withGoogleReCaptcha",
+    "IGoogleReCaptchaProviderProps",
+    "IGoogleReCaptchaConsumerProps",
+    "IGoogleRecaptchaProps",
+    "IWithGoogleReCaptchaProps"
+  ]
+}
