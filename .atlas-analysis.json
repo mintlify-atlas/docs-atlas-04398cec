@@ -85,7 +85,8 @@
     "GoogleReCaptcha",
     "useGoogleReCaptcha",
     "withGoogleReCaptcha",
-    "IGoogleReCaptchaProviderProps",
+    "GoogleReCaptchaConsumer",
+    "GoogleReCaptchaContext",
     "IGoogleReCaptchaConsumerProps",
     "IGoogleRecaptchaProps",
     "IWithGoogleReCaptchaProps"

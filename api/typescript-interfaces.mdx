@@ -5,13 +5,21 @@ description: Complete TypeScript type definitions for react-google-recaptcha-v3
 
 ## Overview
 
-This page documents all TypeScript interfaces, types, and enums exported by react-google-recaptcha-v3.
+This page documents all TypeScript interfaces and types available in react-google-recaptcha-v3, including both exported interfaces and component prop interfaces that can be inferred from component usage.
+
+## Exported Interfaces
+
+These interfaces are explicitly exported and can be imported directly from the package.
 
 ## Provider Interfaces
 
 ### IGoogleReCaptchaProviderProps
 
-Props for the `GoogleReCaptchaProvider` component.
+Props interface for the `GoogleReCaptchaProvider` component.
+
+<Note>
+  This interface is **not exported** from the package. TypeScript will infer the prop types automatically when using the component. If you need to reference these types explicitly, you can use `React.ComponentProps<typeof GoogleReCaptchaProvider>`.
+</Note>
 
 **Source:** `src/google-recaptcha-provider.tsx:20`
 
@@ -76,10 +84,14 @@ interface IGoogleReCaptchaProviderProps {
 
 Context value provided by `GoogleReCaptchaProvider` and consumed by hooks/HOCs.
 
+<Note>
+  This interface **is exported** and can be imported from `react-google-recaptcha-v3`.
+</Note>
+
 **Source:** `src/google-recaptcha-provider.tsx:47`
 
 ```typescript
-interface IGoogleReCaptchaConsumerProps {
+export interface IGoogleReCaptchaConsumerProps {
   executeRecaptcha?: (action?: string) => Promise<string>;
   container?: string | HTMLElement;
 }
@@ -93,16 +105,20 @@ interface IGoogleReCaptchaConsumerProps {
   Container element for explicit rendering
 </ResponseField>
 
-## Component Interfaces
+## Component Prop Interfaces
 
 ### IGoogleRecaptchaProps
 
-Props for the `GoogleReCaptcha` component.
+Props interface for the `GoogleReCaptcha` component.
+
+<Note>
+  This interface **is exported** and can be imported from `react-google-recaptcha-v3`.
+</Note>
 
 **Source:** `src/google-recaptcha.tsx:5`
 
 ```typescript
-interface IGoogleRecaptchaProps {
+export interface IGoogleRecaptchaProps {
   onVerify: (token: string) => void | Promise<void>;
   action?: string;
   refreshReCaptcha?: boolean | string | number | null;
@@ -121,16 +137,18 @@ interface IGoogleRecaptchaProps {
   Trigger to refresh and re-execute reCAPTCHA
 </ParamField>
 
-## HOC Interfaces
-
 ### IWithGoogleReCaptchaProps
 
-Props injected by the `withGoogleReCaptcha` HOC.
+Props interface injected by the `withGoogleReCaptcha` HOC.
+
+<Note>
+  This interface **is exported** and can be imported from `react-google-recaptcha-v3`.
+</Note>
 
 **Source:** `src/with-google-recaptcha.tsx:9`
 
 ```typescript
-interface IWithGoogleReCaptchaProps {
+export interface IWithGoogleReCaptchaProps {
   googleReCaptchaProps: IGoogleReCaptchaConsumerProps;
 }
 ```
@@ -139,14 +157,60 @@ interface IWithGoogleReCaptchaProps {
   Object containing executeRecaptcha function and container info
 </ParamField>
 
+## Additional Exports
+
+### GoogleReCaptchaContext
+
+The React Context object that stores the reCAPTCHA state. Exported for advanced use cases.
+
+```typescript
+import { GoogleReCaptchaContext } from 'react-google-recaptcha-v3';
+
+// Advanced: Manually consume the context
+function MyComponent() {
+  const context = React.useContext(GoogleReCaptchaContext);
+  // Use context.executeRecaptcha
+}
+```
+
+<Note>
+  In most cases, use the `useGoogleReCaptcha` hook instead of consuming the context directly.
+</Note>
+
+### GoogleReCaptchaConsumer
+
+The React Context Consumer component for class-based components. See [GoogleReCaptchaProvider API](/api/google-recaptcha-provider#consumer) for usage.
+
+```typescript
+import { GoogleReCaptchaConsumer } from 'react-google-recaptcha-v3';
+
+class MyComponent extends React.Component {
+  render() {
+    return (
+      <GoogleReCaptchaConsumer>
+        {({ executeRecaptcha }) => (
+          <button onClick={() => executeRecaptcha?.('action')}>
+            Verify
+          </button>
+        )}
+      </GoogleReCaptchaConsumer>
+    );
+  }
+}
+```
+
 ## Usage Examples
 
 ### Typing Provider Props
 
 ```typescript
-import { GoogleReCaptchaProvider, IGoogleReCaptchaProviderProps } from 'react-google-recaptcha-v3';
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+import React from 'react';
 
-const providerProps: IGoogleReCaptchaProviderProps = {
+// Use React.ComponentProps to extract prop types
+type ProviderProps = React.ComponentProps<typeof GoogleReCaptchaProvider>;
+
+const providerProps: ProviderProps = {
   reCaptchaKey: 'YOUR_SITE_KEY',
   language: 'en',
   useRecaptchaNet: false,
@@ -316,9 +380,12 @@ const handleVerifyAsync: IGoogleRecaptchaProps['onVerify'] = async (token) => {
 ### Typing Container Configuration
 
 ```typescript
-import { IGoogleReCaptchaProviderProps } from 'react-google-recaptcha-v3';
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+import React from 'react';
 
-type ContainerConfig = IGoogleReCaptchaProviderProps['container'];
+// Extract container type from component props
+type ProviderProps = React.ComponentProps<typeof GoogleReCaptchaProvider>;
+type ContainerConfig = ProviderProps['container'];
 
 const containerConfig: ContainerConfig = {
   element: 'recaptcha-badge',
@@ -336,9 +403,12 @@ const containerConfig: ContainerConfig = {
 ### Typing Script Props
 
 ```typescript
-import { IGoogleReCaptchaProviderProps } from 'react-google-recaptcha-v3';
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+import React from 'react';
 
-type ScriptProps = IGoogleReCaptchaProviderProps['scriptProps'];
+// Extract scriptProps type from component props
+type ProviderProps = React.ComponentProps<typeof GoogleReCaptchaProvider>;
+type ScriptProps = ProviderProps['scriptProps'];
 
 const scriptConfig: ScriptProps = {
   nonce: 'abc123',
